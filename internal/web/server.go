@@ -41,7 +41,7 @@ func (s *Server) Router() http.Handler {
 
 	// HLS streaming files (with CORS)
 	mux.Handle("/live/", http.StripPrefix("/live/", s.corsHandler(http.FileServer(http.Dir(s.config.Stream.OutputDir)))))
-	mux.Handle("/past-streams/", http.StripPrefix("/past-streams/", s.corsHandler(http.FileServer(http.Dir(s.config.Stream.ArchiveDir)))))
+	mux.Handle("/archive/", http.StripPrefix("/archive/", s.corsHandler(http.FileServer(http.Dir(s.config.Stream.ArchiveDir)))))
 
 	// API endpoints
 	mux.HandleFunc("/api/stream-data", s.handleStreamData)

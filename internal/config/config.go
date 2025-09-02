@@ -11,17 +11,24 @@ import (
 
 // Config holds the main application configuration
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Stream   StreamConfig   `yaml:"stream"`
-	HLS      HLSConfig      `yaml:"hls"`
-	Nostr    NostrConfig    `yaml:"nostr"`
-	Metadata MetadataConfig `yaml:"metadata"`
+	Server   ServerConfig      `yaml:"server"`
+	RTMP     RTMPConfig        `yaml:"rtmp"`
+	Stream   StreamConfig      `yaml:"stream"`
+	HLS      HLSConfig         `yaml:"hls"`
+	Nostr    NostrRelayConfig  `yaml:"nostr"`
+	Metadata StreamMetadata   `yaml:"metadata"`
 }
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
 	Port int    `yaml:"port"`
 	Host string `yaml:"host"`
+}
+
+// RTMPConfig holds RTMP server configuration
+type RTMPConfig struct {
+	Port    int  `yaml:"port"`
+	Enabled bool `yaml:"enabled"`
 }
 
 // StreamConfig holds stream monitoring configuration
@@ -38,15 +45,6 @@ type HLSConfig struct {
 	PlaylistSize int `yaml:"playlist_size"`
 }
 
-// NostrConfig holds Nostr integration settings
-type NostrConfig struct {
-	ConfigFile string `yaml:"config_file"`
-}
-
-// MetadataConfig holds stream metadata settings
-type MetadataConfig struct {
-	ConfigFile string `yaml:"config_file"`
-}
 
 // StreamMetadata represents the stream information
 type StreamMetadata struct {
@@ -89,6 +87,9 @@ func Load(path string) (*Config, error) {
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8080
 	}
+	if cfg.RTMP.Port == 0 {
+		cfg.RTMP.Port = 1935
+	}
 	if cfg.Stream.CheckInterval == 0 {
 		cfg.Stream.CheckInterval = 5 * time.Second
 	}
@@ -108,35 +109,6 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-// LoadStreamMetadata loads stream metadata from YAML file
-func LoadStreamMetadata(path string) (*StreamMetadata, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read stream metadata file %s: %w", path, err)
-	}
-
-	var metadata StreamMetadata
-	if err := yaml.Unmarshal(data, &metadata); err != nil {
-		return nil, fmt.Errorf("failed to parse stream metadata: %w", err)
-	}
-
-	return &metadata, nil
-}
-
-// LoadNostrConfig loads Nostr configuration from YAML file
-func LoadNostrConfig(path string) (*NostrRelayConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read nostr config file %s: %w", path, err)
-	}
-
-	var nostrCfg NostrRelayConfig
-	if err := yaml.Unmarshal(data, &nostrCfg); err != nil {
-		return nil, fmt.Errorf("failed to parse nostr config: %w", err)
-	}
-
-	return &nostrCfg, nil
-}
 
 // SaveStreamMetadata saves stream metadata to JSON file
 func SaveStreamMetadata(path string, metadata *StreamMetadata) error {

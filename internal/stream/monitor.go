@@ -24,26 +24,46 @@ type Monitor struct {
 	ffmpegCmd   *exec.Cmd
 	mutex       sync.RWMutex
 	isActive    bool
+	streamKey   string // Current active stream key
 }
 
 // NewMonitor creates a new stream monitor
 func NewMonitor(cfg *config.Config) (*Monitor, error) {
-	// Load Nostr configuration
-	nostrCfg, err := config.LoadNostrConfig(cfg.Nostr.ConfigFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load nostr config: %w", err)
-	}
-
-	// Initialize Nostr client
-	nostrClient, err := nostr.NewClient(nostrCfg)
+	// Initialize Nostr client with integrated config
+	nostrClient, err := nostr.NewClient(&cfg.Nostr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize nostr client: %w", err)
 	}
 
-	return &Monitor{
+	monitor := &Monitor{
 		config:      cfg,
 		nostrClient: nostrClient,
-	}, nil
+	}
+
+	// Check if there's any existing metadata that indicates a "live" stream that shouldn't be
+	// This helps clean up any incorrect live events from previous runs
+	go monitor.cleanupIncorrectLiveEvents()
+
+	return monitor, nil
+}
+
+// cleanupIncorrectLiveEvents cancels any live events that shouldn't exist
+func (m *Monitor) cleanupIncorrectLiveEvents() {
+	// Check if there's existing stream metadata
+	if m.config.Metadata.Status == "live" {
+		// If metadata says live but we're just starting up, cancel it
+		log.Printf("⚠️ Found existing 'live' metadata on startup - cancelling incorrect event")
+		m.nostrClient.BroadcastCancelEvent(m.config.Metadata.Dtag)
+	}
+
+	// Also check if there are any HLS files that might indicate a false live status
+	metadataPath := filepath.Join(m.config.Stream.OutputDir, "metadata.json")
+	if _, err := os.Stat(metadataPath); err == nil {
+		// Remove old metadata file to prevent confusion
+		if err := os.Remove(metadataPath); err != nil {
+			log.Printf("Warning: couldn't remove old metadata file: %v", err)
+		}
+	}
 }
 
 // Start begins monitoring the RTMP stream
@@ -91,14 +111,12 @@ func (m *Monitor) checkStream() error {
 
 // startStream begins HLS conversion and Nostr broadcasting
 func (m *Monitor) startStream() error {
-	// Load stream metadata
-	metadata, err := config.LoadStreamMetadata(m.config.Metadata.ConfigFile)
-	if err != nil {
-		log.Printf("Failed to load stream metadata: %v", err)
-		metadata = &config.StreamMetadata{
-			Title:   "Live Stream",
-			Summary: "Currently streaming live",
-		}
+	// Use integrated metadata from config
+	metadata := &config.StreamMetadata{
+		Title:   m.config.Metadata.Title,
+		Summary: m.config.Metadata.Summary,
+		Image:   m.config.Metadata.Image,
+		Tags:    m.config.Metadata.Tags,
 	}
 
 	// Generate unique stream identifier
@@ -301,4 +319,108 @@ func (m *Monitor) IsActive() bool {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return m.isActive
+}
+
+// HandleStreamStart handles when an RTMP stream starts
+func (m *Monitor) HandleStreamStart(streamKey string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.isActive {
+		log.Printf("Stream already active, ignoring new stream: %s", streamKey)
+		return
+	}
+
+	log.Printf("🔴 RTMP stream started: %s", streamKey)
+	m.streamKey = streamKey
+	
+	// Start stream processing
+	if err := m.startStreamInternal(); err != nil {
+		log.Printf("Failed to start stream processing: %v", err)
+		return
+	}
+
+	m.isActive = true
+}
+
+// HandleStreamStop handles when an RTMP stream stops
+func (m *Monitor) HandleStreamStop(streamKey string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if !m.isActive || m.streamKey != streamKey {
+		return
+	}
+
+	log.Printf("⚫ RTMP stream stopped: %s", streamKey)
+	
+	// Stop stream processing
+	if err := m.stopStreamInternal(); err != nil {
+		log.Printf("Failed to stop stream processing: %v", err)
+	}
+
+	m.isActive = false
+	m.streamKey = ""
+}
+
+// startStreamInternal starts stream processing without checking RTMP
+func (m *Monitor) startStreamInternal() error {
+	// Use integrated metadata from config
+	metadata := &config.StreamMetadata{
+		Title:   m.config.Metadata.Title,
+		Summary: m.config.Metadata.Summary,
+		Image:   m.config.Metadata.Image,
+		Tags:    m.config.Metadata.Tags,
+	}
+
+	// Generate unique stream identifier
+	metadata.Dtag = fmt.Sprintf("%d", rand.Intn(900000)+100000)
+	metadata.Status = "live"
+	metadata.Starts = fmt.Sprintf("%d", time.Now().Unix())
+	metadata.Ends = ""
+	metadata.StreamURL = fmt.Sprintf("http://localhost:%d/live/output.m3u8", m.config.Server.Port)
+	
+	// Create archive directory name that will be used later for consistent naming
+	archiveDirName := fmt.Sprintf("%s-%s", time.Now().Format("1-2-2006"), metadata.Dtag)
+	metadata.RecordingURL = fmt.Sprintf("http://localhost:%d/archive/%s/output.m3u8",
+		m.config.Server.Port,
+		archiveDirName)
+
+	m.metadata = metadata
+
+	// Save metadata to JSON
+	metadataPath := filepath.Join(m.config.Stream.OutputDir, "metadata.json")
+	if err := config.SaveStreamMetadata(metadataPath, metadata); err != nil {
+		return fmt.Errorf("failed to save metadata: %w", err)
+	}
+
+	// Broadcast Nostr start event
+	go m.nostrClient.BroadcastStartEvent(metadata)
+
+	log.Println("✅ Stream started successfully")
+	return nil
+}
+
+// stopStreamInternal stops stream processing without checking RTMP
+func (m *Monitor) stopStreamInternal() error {
+	if m.metadata != nil {
+		// Update metadata
+		m.metadata.Status = "ended"
+		m.metadata.Ends = fmt.Sprintf("%d", time.Now().Unix())
+
+		// Save final metadata
+		metadataPath := filepath.Join(m.config.Stream.OutputDir, "metadata.json")
+		config.SaveStreamMetadata(metadataPath, m.metadata)
+
+		// Archive the stream
+		if err := m.archiveStream(); err != nil {
+			log.Printf("Error archiving stream: %v", err)
+		}
+
+		// Broadcast Nostr end event
+		go m.nostrClient.BroadcastEndEvent(m.metadata)
+	}
+
+	log.Println("✅ Stream stopped and archived")
+	return nil
 }

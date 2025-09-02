@@ -145,7 +145,7 @@ async function loadPastStreams() {
     if (emptyEl) emptyEl.classList.add('hidden');
     
     try {
-        const response = await fetch('/past-streams/');
+        const response = await fetch('/archive/');
         const html = await response.text();
         
         const parser = new DOMParser();
@@ -166,7 +166,7 @@ async function loadPastStreams() {
             links.map(async (folder) => {
                 try {
                     const folderPath = folder.replace(/\/$/, '');
-                    const metaResponse = await fetch(`/past-streams/${folderPath}/metadata.json`);
+                    const metaResponse = await fetch(`/archive/${folderPath}/metadata.json`);
                     if (!metaResponse.ok) throw new Error('No metadata');
                     
                     const metadata = await metaResponse.json();

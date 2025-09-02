@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"stream-server/internal/config"
+	"stream-server/internal/rtmp"
 	"stream-server/internal/stream"
 	"stream-server/internal/web"
 )
@@ -19,12 +20,17 @@ func main() {
 	log.Println("🎬 Starting Live Streaming Server...")
 
 	// Load configuration
-	cfg, err := config.Load("configs/config.yml")
+	cfg, err := config.Load("config.yml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	log.Printf("Server will run on %s:%d", cfg.Server.Host, cfg.Server.Port)
+
+	// Ensure required directories exist
+	if err := ensureDirectories(cfg); err != nil {
+		log.Fatalf("Failed to create required directories: %v", err)
+	}
 
 	// Initialize stream monitor
 	monitor, err := stream.NewMonitor(cfg)
@@ -32,16 +38,36 @@ func main() {
 		log.Fatalf("Failed to initialize stream monitor: %v", err)
 	}
 
-	// Start stream monitoring in background
+	// Initialize and start RTMP server if enabled
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		log.Println("📡 Starting stream monitor...")
-		if err := monitor.Start(ctx); err != nil {
-			log.Printf("Stream monitor error: %v", err)
-		}
-	}()
+	var rtmpServer *rtmp.Server
+	if cfg.RTMP.Enabled {
+		rtmpServer = rtmp.NewServer(cfg)
+
+		// Set up stream handlers to connect RTMP server with stream monitor
+		rtmpServer.SetStreamHandlers(
+			monitor.HandleStreamStart, // Called when stream starts
+			monitor.HandleStreamStop,  // Called when stream stops
+		)
+
+		// Start RTMP server
+		go func() {
+			log.Printf("🎬 Starting RTMP server on port %d...", cfg.RTMP.Port)
+			if err := rtmpServer.Start(ctx); err != nil {
+				log.Printf("RTMP server error: %v", err)
+			}
+		}()
+	} else {
+		// Start traditional stream monitoring if RTMP server is disabled
+		go func() {
+			log.Println("📡 Starting stream monitor...")
+			if err := monitor.Start(ctx); err != nil {
+				log.Printf("Stream monitor error: %v", err)
+			}
+		}()
+	}
 
 	// Initialize web server
 	webServer := web.NewServer(cfg, monitor)
@@ -82,4 +108,23 @@ func main() {
 	}
 
 	log.Println("✅ Server gracefully stopped")
+}
+
+// ensureDirectories creates required directories if they don't exist
+func ensureDirectories(cfg *config.Config) error {
+	directories := []string{
+		cfg.Stream.OutputDir,
+		cfg.Stream.ArchiveDir,
+		"www/res",
+		"www/views",
+	}
+
+	for _, dir := range directories {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
+	log.Println("✅ Required directories created/verified")
+	return nil
 }

@@ -1,0 +1,35 @@
+server:
+  port: 8080
+  host: "127.0.0.1"
+
+rtmp:
+  port: 1935
+  enabled: true
+
+stream:
+  rtmp_url: "rtmp://localhost:1935/live/stream"
+  output_dir: "www/live"
+  archive_dir: "www/live/archive"
+  check_interval: 5s
+
+hls:
+  segment_time: 10
+  playlist_size: 10
+
+metadata:
+  title: "My Live Stream"
+  summary: "Welcome to my live stream! We'll be coding, chatting, and having fun."
+  image: "https://example.com/stream-thumbnail.jpg"
+  tags:
+    - "live"
+    - "coding"
+    - "tech"
+    - "tutorial"
+
+nostr:
+  public_key: "your-nostr-public-key-hex"
+  private_key: "your-nostr-private-key-hex"
+  relays:
+    - "wss://relay.damus.io"
+    - "wss://nos.lol"
+    - "wss://relay.nostr.band"

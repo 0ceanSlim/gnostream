@@ -162,6 +162,25 @@ func (c *Client) BroadcastEndEvent(metadata *config.StreamMetadata) {
 	c.publishEvent(event)
 }
 
+// BroadcastCancelEvent broadcasts an event to cancel/end an incorrect stream event
+func (c *Client) BroadcastCancelEvent(dtag string) {
+	log.Println("📡 Broadcasting stream cancellation event to Nostr relays")
+
+	tags := [][]string{
+		{"d", dtag},
+		{"status", "ended"},
+		{"summary", "Stream was incorrectly marked as live"},
+	}
+
+	event, err := c.createEvent(30311, "", tags)
+	if err != nil {
+		log.Printf("Failed to create cancel event: %v", err)
+		return
+	}
+
+	c.publishEvent(event)
+}
+
 // createEvent creates and signs a Nostr event
 func (c *Client) createEvent(kind int, content string, tags [][]string) (*Event, error) {
 	event := Event{
