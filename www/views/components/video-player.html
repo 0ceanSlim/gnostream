@@ -1,0 +1,37 @@
+{{define "video-player"}}
+<div class="terminal-box rounded-md p-6 mb-8">
+    <div class="mb-4">
+        <div class="flex items-center text-sm text-cyan-400 font-mono mb-2">
+            <span>VISUAL_FEED_001://</span>
+            <span class="animate-pulse ml-2">●</span>
+            <span class="ml-auto text-green-400">ENCRYPTED</span>
+        </div>
+        <hr class="border-green-400 opacity-30">
+    </div>
+    
+    <div class="video-frame rounded-md mb-4">
+        <video id="videoPlayer" 
+               controls 
+               autoplay 
+               muted 
+               class="w-full rounded-md bg-black relative z-10" style="min-height: 400px;"
+               poster="/res/img/stream-placeholder.jpg">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    
+    <!-- Cyber Controls -->
+    <div class="flex justify-center space-x-4 mt-6">
+        <button onclick="refreshStream()" 
+                class="cyber-button px-6 py-3 rounded font-mono text-sm uppercase tracking-wide">
+            <span class="mr-2">↻</span>
+            REFRESH_FEED
+        </button>
+        <button onclick="toggleFullscreen()" 
+                class="cyber-button px-6 py-3 rounded font-mono text-sm uppercase tracking-wide">
+            <span class="mr-2">⛶</span>
+            FULLSCREEN
+        </button>
+    </div>
+</div>
+{{end}}

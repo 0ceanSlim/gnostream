@@ -1,0 +1,31 @@
+{{define "footer"}}
+<footer class="text-center mt-12 pb-8">
+    <div class="terminal-box rounded p-4">
+        <div class="text-xs font-mono text-cyan-400 mb-2">
+            SYSTEM_INFO: [STREAM_NODE] v2.1.4 | UPTIME: <span id="uptime">00:00:00</span>
+        </div>
+        <div class="text-xs font-mono text-gray-500">
+            © 2024 NEURAL_INTERFACE | CRAFTED BY 
+            <a href="https://njump.me/npub1zmc6qyqdfnllhnzzxr5wpepfpnzcf8q6m3jdveflmgruqvd3qa9sjv7f60" 
+               class="text-green-400 hover:text-cyan-400 neon-glow-subtle">OceanSlim</a>
+            | STATUS: <span class="text-green-400">OPERATIONAL</span>
+        </div>
+    </div>
+</footer>
+
+<script>
+// Fake uptime counter
+let startTime = Date.now();
+function updateUptime() {
+    const elapsed = Date.now() - startTime;
+    const hours = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
+    const minutes = Math.floor((elapsed % 3600000) / 60000).toString().padStart(2, '0');
+    const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+    const uptimeEl = document.getElementById('uptime');
+    if (uptimeEl) {
+        uptimeEl.textContent = `${hours}:${minutes}:${seconds}`;
+    }
+}
+setInterval(updateUptime, 1000);
+</script>
+{{end}}

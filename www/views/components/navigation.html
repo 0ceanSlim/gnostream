@@ -1,0 +1,34 @@
+{{define "navigation"}}
+<button onclick="toggleNav()" class="lg:hidden p-3 cyber-button text-sm">
+    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+    </svg>
+</button>
+
+<nav id="navbar" class="hidden lg:flex flex-col lg:flex-row w-full lg:w-auto">
+    <ul class="flex flex-col lg:flex-row justify-center lg:space-x-8 space-y-4 lg:space-y-0 px-4 lg:px-0">
+        <li>
+            <a href="/"
+               hx-get="/"
+               hx-push-url="/"
+               hx-target="body"
+               hx-swap="outerHTML"
+               class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                <span class="text-red-400 mr-2">●</span>
+                LIVE_FEED
+            </a>
+        </li>
+        <li>
+            <a href="/archive"
+               hx-get="/archive"
+               hx-push-url="/archive"
+               hx-target="body"
+               hx-swap="outerHTML"
+               class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                <span class="text-blue-400 mr-2">▣</span>
+                DATA_VAULT
+            </a>
+        </li>
+    </ul>
+</nav>
+{{end}}

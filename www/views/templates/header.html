@@ -1,0 +1,24 @@
+{{define "header"}}
+<header class="terminal-box rounded-md p-6 mb-8 relative">
+    <div class="flex items-center justify-between">
+        <!-- Logo -->
+        {{template "app-name"}}
+        
+        <!-- Navigation -->
+        {{template "navigation"}}
+    </div>
+    
+    <!-- Terminal prompt line -->
+    <div class="mt-4 text-xs opacity-60 font-mono">
+        <span class="text-green-400">root@stream-node:~$</span> <span class="text-cyan-400">./initialize_stream_interface.sh</span>
+        <span class="animate-pulse">█</span>
+    </div>
+</header>
+
+<script>
+    function toggleNav() {
+        const navbar = document.getElementById("navbar");
+        navbar.classList.toggle("hidden");
+    }
+</script>
+{{end}}

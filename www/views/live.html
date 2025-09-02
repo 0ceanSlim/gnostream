@@ -1,0 +1,10 @@
+{{define "live-view"}}
+<main class="space-y-6">
+    {{template "stream-status" .}}
+    {{template "video-player" .}}
+    {{template "stream-info" .}}
+    {{template "past-streams" .}}
+</main>
+
+<script src="/res/js/stream.js"></script>
+{{end}}

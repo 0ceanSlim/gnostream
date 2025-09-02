@@ -1,0 +1,14 @@
+{{define "stream-status"}}
+<div class="flex justify-center mb-8">
+    <div id="streamStatus" 
+         class="px-8 py-4 text-xl font-bold rounded-md font-mono uppercase tracking-widest cyber-title"
+         data-status="{{.Status}}"
+         _="if my @data-status is 'live' 
+            then add .status-live 
+            else add .status-offline">
+        <span class="mr-2">◉</span>
+        {{.Status}}
+        <span class="ml-2 text-sm opacity-75">[NODE_ACTIVE]</span>
+    </div>
+</div>
+{{end}}

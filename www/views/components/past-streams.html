@@ -1,0 +1,42 @@
+{{define "past-streams"}}
+<div class="terminal-box rounded-md p-6">
+    <!-- Terminal header -->
+    <div class="flex items-center text-lg text-cyan-400 font-mono mb-6">
+        <span class="cyber-title">ARCHIVE_ACCESS.db</span>
+        <span class="animate-pulse ml-2 text-green-400">●</span>
+        <span class="ml-auto text-sm text-green-400">[SCANNING...]</span>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="pastStreamsLoading" class="text-center py-12">
+        <div class="spinner mx-auto mb-6"></div>
+        <p class="text-cyan-400 font-mono">LOADING ARCHIVED DATA...</p>
+        <div class="text-xs text-green-400 mt-2 font-mono">
+            > Decrypting stream metadata...
+            <span class="animate-pulse">█</span>
+        </div>
+    </div>
+    
+    <!-- Error State -->
+    <div id="pastStreamsError" class="hidden text-center py-12">
+        <p class="text-red-400 mb-6 font-mono text-lg">ERROR: ARCHIVE ACCESS DENIED</p>
+        <button onclick="loadPastStreams()" 
+                class="cyber-button px-6 py-3 rounded font-mono text-sm uppercase">
+            <span class="mr-2">↻</span>
+            RETRY CONNECTION
+        </button>
+    </div>
+    
+    <!-- Streams Grid -->
+    <div id="pastStreamsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Stream cards will be inserted here -->
+    </div>
+    
+    <!-- Empty State -->
+    <div id="pastStreamsEmpty" class="hidden text-center py-12">
+        <div class="text-6xl mb-4 text-cyan-400">▢</div>
+        <p class="text-cyan-400 font-mono">NO ARCHIVED DATA FOUND</p>
+        <p class="text-xs text-gray-500 mt-2 font-mono">Archive database is empty</p>
+    </div>
+</div>
+{{end}}

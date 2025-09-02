@@ -1,0 +1,97 @@
+{{define "archive-view"}}
+<main class="space-y-8">
+    <!-- Archive Header -->
+    <div class="text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 cyber-title neon-glow-subtle glitch" data-text="DATA_VAULT">
+            DATA_VAULT
+        </h1>
+        <p class="text-cyan-400 font-mono">ACCESS_LEVEL: AUTHORIZED | BROWSING NEURAL_ARCHIVES</p>
+        <div class="text-xs text-green-400 mt-2 font-mono">
+            > Loading archived consciousness streams...
+        </div>
+    </div>
+    
+    <!-- Archive Container -->
+    <div class="terminal-box rounded-md p-6">
+        <!-- Terminal Header -->
+        <div class="flex items-center text-sm text-cyan-400 font-mono mb-6">
+            <span>VAULT_BROWSER.exe</span>
+            <span class="animate-pulse ml-2 text-green-400">●</span>
+            <span class="ml-auto text-green-400">[ACTIVE]</span>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="archiveLoading" class="text-center py-16">
+            <div class="spinner mx-auto mb-6"></div>
+            <p class="text-cyan-400 font-mono text-lg">DECRYPTING ARCHIVE DATABASE...</p>
+            <div class="text-xs text-green-400 mt-4 font-mono">
+                > Scanning neural patterns...<br>
+                > Verifying data integrity...<br>
+                > Loading stream manifests...
+                <span class="animate-pulse">█</span>
+            </div>
+        </div>
+        
+        <!-- Archive Grid -->
+        <div id="archiveGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Archive cards will be inserted here -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="archiveEmpty" class="hidden text-center py-16">
+            <div class="text-8xl mb-6 text-cyan-400">◉</div>
+            <p class="text-cyan-400 font-mono text-xl">VAULT IS EMPTY</p>
+            <p class="text-sm text-gray-500 mt-3 font-mono">No archived streams detected in neural database</p>
+        </div>
+    </div>
+</main>
+
+<!-- Cyberpunk Stream Modal -->
+<div id="streamModal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-50 flex items-center justify-center p-4">
+    <div class="terminal-box rounded-lg max-w-5xl w-full overflow-y-auto" style="max-height: 90vh;">
+        <div class="p-6">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-start mb-6">
+                <div class="flex-1">
+                    <div class="flex items-center text-sm text-cyan-400 font-mono mb-3">
+                        <span>STREAM_VIEWER.exe</span>
+                        <span class="animate-pulse ml-2 text-green-400">●</span>
+                    </div>
+                    <h3 id="modalTitle" class="text-2xl font-bold mb-2 cyber-title neon-glow-subtle">Stream Title</h3>
+                    <p id="modalDate" class="text-cyan-400 font-mono text-sm">Date</p>
+                </div>
+                <button onclick="closeModal()" 
+                        class="cyber-button px-4 py-2 text-lg ml-4 hover:text-red-400">
+                    ✕
+                </button>
+            </div>
+            
+            <!-- Video Container -->
+            <div class="video-frame rounded-md mb-6">
+                <video id="modalVideo" controls class="w-full rounded-md bg-black relative z-10">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            
+            <!-- Stream Info -->
+            <div>
+                <div class="mb-4">
+                    <div class="text-sm text-cyan-400 font-mono mb-2">DESCRIPTION:</div>
+                    <p id="modalSummary" class="text-green-300 pl-4 border-l-2 border-cyan-400 border-opacity-50">
+                        Stream description
+                    </p>
+                </div>
+                
+                <div>
+                    <div class="text-sm text-cyan-400 font-mono mb-3">NEURAL_TAGS:</div>
+                    <div id="modalTags" class="flex flex-wrap gap-2">
+                        <!-- Tags will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/res/js/archive.js"></script>
+{{end}}

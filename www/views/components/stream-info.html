@@ -1,0 +1,29 @@
+{{define "stream-info"}}
+<div class="terminal-box rounded-md p-6 mb-8">
+    <!-- Terminal header -->
+    <div class="flex items-center text-sm text-cyan-400 font-mono mb-4">
+        <span>STREAM_METADATA.exe</span>
+        <span class="ml-auto text-green-400">[LOADED]</span>
+    </div>
+    
+    <h1 id="streamTitle" class="text-3xl md:text-4xl font-bold mb-4 cyber-title neon-glow-subtle">
+        {{.Title}}
+    </h1>
+    
+    <div class="mb-6">
+        <div class="text-sm text-cyan-400 font-mono mb-2">DESCRIPTION:</div>
+        <p id="streamSummary" class="text-green-300 leading-relaxed pl-4 border-l-2 border-cyan-400 border-opacity-50">
+            {{.Summary}}
+        </p>
+    </div>
+    
+    <div>
+        <div class="text-sm text-cyan-400 font-mono mb-3">TAGS:</div>
+        <div id="streamTags" class="flex flex-wrap gap-3">
+            {{range .Tags}}
+                <span class="neon-border text-green-400 px-3 py-1 rounded text-sm font-mono uppercase">#{{.}}</span>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
