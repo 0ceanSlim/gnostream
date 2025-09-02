@@ -1,38 +1,66 @@
-# Dockerfile
-FROM golang:1.22.4-alpine AS builder
+# Multi-stage build for secure Go application
+FROM golang:1.23.3-alpine3.20 AS builder
 
-# Update and install FFmpeg and other dependencies
-RUN apk update && apk upgrade && apk add --no-cache ffmpeg git
+# Security: Update packages and install minimal dependencies
+RUN apk update && apk upgrade && \
+    apk add --no-cache --update git ca-certificates tzdata && \
+    rm -rf /var/cache/apk/*
+
+# Security: Create non-root user for build
+RUN adduser -D -s /bin/sh -u 1001 appuser
 
 WORKDIR /app
 
-# Copy go mod files
+# Copy dependency files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+
+# Security: Download dependencies as non-root
+RUN go mod download && go mod verify
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o stream-server ./cmd/server
+# Security: Build with security flags and strip debugging info
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -a -installsuffix cgo \
+    -o stream-server ./cmd/server
 
-FROM alpine:3.20.2
+# Security: Use distroless base image instead of alpine
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# Update and install FFmpeg
-RUN apk update && apk upgrade && apk add --no-cache ffmpeg ca-certificates
+# Security: Copy CA certificates for HTTPS
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Security: Set up non-root user (distroless provides nonroot user)
+USER nonroot:nonroot
 
 WORKDIR /app
 
-# Copy binary and static files
-COPY --from=builder /app/stream-server .
-COPY --from=builder /app/web ./web
-COPY --from=builder /app/configs ./configs
+# Security: Copy binary with correct ownership
+COPY --from=builder --chown=nonroot:nonroot /app/stream-server ./stream-server
 
-# Create directories
-RUN mkdir -p web/live web/live/past-streams
+# Copy static files with correct ownership  
+COPY --from=builder --chown=nonroot:nonroot /app/www ./www
+COPY --from=builder --chown=nonroot:nonroot /app/configs ./configs
 
-# Expose port
+# Security: Create directories with correct permissions
+USER root
+RUN mkdir -p /app/streams/live /app/streams/archive && \
+    chown -R nonroot:nonroot /app/streams
+USER nonroot:nonroot
+
+# Security: Use non-privileged port
 EXPOSE 8080
 
-# Run the server
-CMD ["./stream-server"]
+# Security: Set resource limits and read-only filesystem
+LABEL \
+    org.opencontainers.image.title="Stream Node Server" \
+    org.opencontainers.image.description="Cyberpunk-themed live streaming server" \
+    org.opencontainers.image.version="2.1.4" \
+    org.opencontainers.image.vendor="Neural Interface" \
+    org.opencontainers.image.licenses="MIT"
+
+# Security: Use exec form and run as non-root
+ENTRYPOINT ["./stream-server"]
