@@ -1,0 +1,17 @@
+# Stream Info Configuration
+# This file contains your stream's metadata that will be broadcast to Nostr relays
+# You can edit this file while the stream is running and the changes will be picked up
+
+title: "My Live Stream"
+summary: "Welcome to my live stream! We'll be coding, chatting, and having fun."
+image: "https://example.com/stream-thumbnail.jpg"
+tags:
+  - "live"
+  - "coding"
+  - "tech"
+  - "tutorial"
+
+# Recording Settings
+# true = Record stream for later viewing (ignores HLS playlist_size, keeps all segments)
+# false = Live only (segments deleted after playlist_size limit, no archive)
+record: true

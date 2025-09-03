@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"stream-server/internal/config"
-	"stream-server/internal/stream"
+	"gnostream/src/config"
+	"gnostream/src/stream"
 )
 
 // Server represents the web server
@@ -39,9 +39,12 @@ func (s *Server) Router() http.Handler {
 	// Static files - using /res/ prefix to match your structure
 	mux.Handle("/res/", http.StripPrefix("/res/", http.FileServer(http.Dir("www/res/"))))
 
+	// Get stream defaults
+	streamDefaults := s.config.GetStreamDefaults()
+
 	// HLS streaming files (with CORS)
-	mux.Handle("/live/", http.StripPrefix("/live/", s.corsHandler(http.FileServer(http.Dir(s.config.Stream.OutputDir)))))
-	mux.Handle("/archive/", http.StripPrefix("/archive/", s.corsHandler(http.FileServer(http.Dir(s.config.Stream.ArchiveDir)))))
+	mux.Handle("/live/", http.StripPrefix("/live/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.OutputDir)))))
+	mux.Handle("/archive/", http.StripPrefix("/archive/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.ArchiveDir)))))
 
 	// API endpoints
 	mux.HandleFunc("/api/stream-data", s.handleStreamData)

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"stream-server/internal/config"
+	"gnostream/src/config"
 )
 
 // Server represents a simple RTMP-like server that uses FFmpeg for RTMP handling
@@ -53,7 +53,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// For now, we'll use a simple approach: start FFmpeg to listen for RTMP input
 	// and automatically begin HLS conversion when a stream is detected
-	log.Printf("🎬 RTMP server (FFmpeg-based) starting on port %d", s.config.RTMP.Port)
+	rtmpDefaults := s.config.GetRTMPDefaults()
+	log.Printf("🎬 RTMP server (FFmpeg-based) starting on port %d", rtmpDefaults.Port)
 
 	// Start a background process to monitor for incoming RTMP streams
 	go s.monitorRTMPStreams()
@@ -114,20 +115,24 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 
 	log.Printf("🎥 Starting RTMP listener for stream: %s", streamKey)
 
+	// Get defaults
+	streamDefaults := s.config.GetStreamDefaults()
+	rtmpDefaults := s.config.GetRTMPDefaults()
+
 	// Ensure output directory exists
-	if err := os.MkdirAll(s.config.Stream.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(streamDefaults.OutputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	// Output path for HLS
-	outputPath := filepath.Join(s.config.Stream.OutputDir, "output.m3u8")
+	outputPath := filepath.Join(streamDefaults.OutputDir, "output.m3u8")
 
 	// FFmpeg command to act as RTMP server and convert to HLS
 	// This will listen on the RTMP port and wait for incoming streams
 	cmd := exec.CommandContext(s.ctx, "ffmpeg",
 		"-f", "flv", // RTMP input format
 		"-listen", "1", // Listen for incoming connections
-		"-i", fmt.Sprintf("rtmp://0.0.0.0:%d/live/%s", s.config.RTMP.Port, streamKey),
+		"-i", fmt.Sprintf("rtmp://0.0.0.0:%d/live/%s", rtmpDefaults.Port, streamKey),
 		"-c:v", "libx264",
 		"-crf", "18",
 		"-preset", "veryfast",
@@ -146,7 +151,7 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 		return fmt.Errorf("failed to start FFmpeg RTMP server: %w", err)
 	}
 
-	log.Printf("✅ FFmpeg RTMP listener started on port %d, waiting for actual stream connection", s.config.RTMP.Port)
+	log.Printf("✅ FFmpeg RTMP listener started on port %d, waiting for actual stream connection", rtmpDefaults.Port)
 
 	// Store stream context but mark as waiting
 	s.activeStreams[streamKey] = &StreamContext{
@@ -168,7 +173,7 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 				return
 			case <-ticker.C:
 				currentHLSActive := s.hasActiveHLSOutput(outputPath)
-				
+
 				// Check if stream just started
 				if !streamStarted && currentHLSActive {
 					streamStarted = true
@@ -179,12 +184,12 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 						go s.onStreamStart(streamKey)
 					}
 				}
-				
+
 				// Check if stream is active and update last seen time
 				if streamStarted && currentHLSActive {
 					lastHLSUpdate = time.Now()
 				}
-				
+
 				// Check if stream has ended (no HLS updates for 15 seconds)
 				if streamStarted && !currentHLSActive && time.Since(lastHLSUpdate) > 15*time.Second {
 					log.Printf("⚫ RTMP stream ended (no HLS activity): %s", streamKey)
@@ -194,7 +199,7 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 					s.stopStreamProcessing(streamKey, s.activeStreams[streamKey])
 					return
 				}
-				
+
 				// Check if FFmpeg process has ended
 				if cmd.ProcessState != nil {
 					if streamStarted {
@@ -224,7 +229,7 @@ func (s *Server) hasActiveHLSOutput(outputPath string) bool {
 			return true
 		}
 	}
-	
+
 	// Also check for .ts segment files which are created more frequently
 	dir := filepath.Dir(outputPath)
 	if files, err := filepath.Glob(filepath.Join(dir, "*.ts")); err == nil && len(files) > 0 {
@@ -237,7 +242,7 @@ func (s *Server) hasActiveHLSOutput(outputPath string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 

@@ -1,4 +1,4 @@
-module stream-server
+module gnostream
 
 go 1.21
 

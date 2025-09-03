@@ -2,29 +2,20 @@ server:
   port: 8080
   host: "127.0.0.1"
 
-rtmp:
-  port: 1935
-  enabled: true
-
-stream:
-  rtmp_url: "rtmp://localhost:1935/live/stream"
-  output_dir: "www/live"
-  archive_dir: "www/live/archive"
-  check_interval: 5s
-
 hls:
+  # How long each video segment is in seconds
+  # Lower = less latency, more responsive (2-6s)
+  # Higher = more efficient, less responsive (10-30s) 
   segment_time: 10
+  
+  # How many segments to keep in the playlist
+  # With 10s segments: 10 = ~100s of rewind capability
+  # Higher = more rewind/storage, Lower = less rewind/storage
   playlist_size: 10
 
-metadata:
-  title: "My Live Stream"
-  summary: "Welcome to my live stream! We'll be coding, chatting, and having fun."
-  image: "https://example.com/stream-thumbnail.jpg"
-  tags:
-    - "live"
-    - "coding"
-    - "tech"
-    - "tutorial"
+# Path to the stream info YAML file (optional, defaults to "stream-info.yml")
+# You can put this file anywhere you want
+stream_info_path: "stream-info.yml"
 
 nostr:
   public_key: "your-nostr-public-key-hex"

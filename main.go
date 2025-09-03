@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"stream-server/internal/config"
-	"stream-server/internal/rtmp"
-	"stream-server/internal/stream"
-	"stream-server/internal/web"
+	"gnostream/src/config"
+	"gnostream/src/rtmp"
+	"gnostream/src/stream"
+	"gnostream/src/web"
 )
 
 func main() {
@@ -43,7 +43,8 @@ func main() {
 	defer cancel()
 
 	var rtmpServer *rtmp.Server
-	if cfg.RTMP.Enabled {
+	rtmpDefaults := cfg.GetRTMPDefaults()
+	if rtmpDefaults.Enabled {
 		rtmpServer = rtmp.NewServer(cfg)
 
 		// Set up stream handlers to connect RTMP server with stream monitor
@@ -54,7 +55,7 @@ func main() {
 
 		// Start RTMP server
 		go func() {
-			log.Printf("🎬 Starting RTMP server on port %d...", cfg.RTMP.Port)
+			log.Printf("🎬 Starting RTMP server on port %d...", rtmpDefaults.Port)
 			if err := rtmpServer.Start(ctx); err != nil {
 				log.Printf("RTMP server error: %v", err)
 			}
@@ -112,9 +113,10 @@ func main() {
 
 // ensureDirectories creates required directories if they don't exist
 func ensureDirectories(cfg *config.Config) error {
+	streamDefaults := cfg.GetStreamDefaults()
 	directories := []string{
-		cfg.Stream.OutputDir,
-		cfg.Stream.ArchiveDir,
+		streamDefaults.OutputDir,
+		streamDefaults.ArchiveDir,
 		"www/res",
 		"www/views",
 	}
