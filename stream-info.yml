@@ -2,16 +2,16 @@
 # This file contains your stream's metadata that will be broadcast to Nostr relays
 # You can edit this file while the stream is running and the changes will be picked up
 
-title: "My Live Stream"
-summary: "Welcome to my live stream! We'll be coding, chatting, and having fun."
-image: "https://example.com/stream-thumbnail.jpg"
+title: "Chillhop!"
+summary: "Running gnostream. Testing streaming some music to nostr."
+image: "https://wallpapercave.com/wp/wp4783968.jpg"
 tags:
+  - "music"
   - "live"
-  - "coding"
-  - "tech"
-  - "tutorial"
+  - "chill"
+  - "test"
 
 # Recording Settings
 # true = Record stream for later viewing (ignores HLS playlist_size, keeps all segments)
 # false = Live only (segments deleted after playlist_size limit, no archive)
-record: true
+record: false

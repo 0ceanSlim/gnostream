@@ -120,12 +120,18 @@ func (m *Monitor) startStream() error {
 	metadata.Status = "live"
 	metadata.Starts = fmt.Sprintf("%d", time.Now().Unix())
 	metadata.Ends = ""
-	metadata.StreamURL = fmt.Sprintf("http://localhost:%d/live/output.m3u8", m.config.Server.Port)
+	// Use external URL if configured, otherwise use localhost
+	baseURL := m.config.Server.ExternalURL
+	if baseURL == "" {
+		baseURL = fmt.Sprintf("http://localhost:%d", m.config.Server.Port)
+	}
+	
+	metadata.StreamURL = fmt.Sprintf("%s/live/output.m3u8", baseURL)
 
 	// Only set recording URL if recording is enabled
 	if m.config.StreamInfo.Record {
-		metadata.RecordingURL = fmt.Sprintf("http://localhost:%d/past-streams/%s-%s/output.m3u8",
-			m.config.Server.Port,
+		metadata.RecordingURL = fmt.Sprintf("%s/past-streams/%s-%s/output.m3u8",
+			baseURL,
 			time.Now().Format("1-2-2006"),
 			metadata.Dtag)
 	} else {
@@ -417,14 +423,20 @@ func (m *Monitor) startStreamsrc() error {
 	metadata.Status = "live"
 	metadata.Starts = fmt.Sprintf("%d", time.Now().Unix())
 	metadata.Ends = ""
-	metadata.StreamURL = fmt.Sprintf("http://localhost:%d/live/output.m3u8", m.config.Server.Port)
+	// Use external URL if configured, otherwise use localhost
+	baseURL := m.config.Server.ExternalURL
+	if baseURL == "" {
+		baseURL = fmt.Sprintf("http://localhost:%d", m.config.Server.Port)
+	}
+	
+	metadata.StreamURL = fmt.Sprintf("%s/live/output.m3u8", baseURL)
 
 	// Only set recording URL if recording is enabled
 	if m.config.StreamInfo.Record {
 		// Create archive directory name that will be used later for consistent naming
 		archiveDirName := fmt.Sprintf("%s-%s", time.Now().Format("1-2-2006"), metadata.Dtag)
-		metadata.RecordingURL = fmt.Sprintf("http://localhost:%d/archive/%s/output.m3u8",
-			m.config.Server.Port,
+		metadata.RecordingURL = fmt.Sprintf("%s/archive/%s/output.m3u8",
+			baseURL,
 			archiveDirName)
 	} else {
 		metadata.RecordingURL = "" // No recording URL when recording disabled

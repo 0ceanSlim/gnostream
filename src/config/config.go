@@ -13,6 +13,7 @@ import (
 // Config holds the main application configuration
 type Config struct {
 	Server               ServerConfig     `yaml:"server"`
+	RTMP                 RTMPConfig       `yaml:"rtmp"`
 	HLS                  HLSConfig        `yaml:"hls"`
 	Nostr                NostrRelayConfig `yaml:"nostr"`
 	StreamInfoPath    string      `yaml:"stream_info_path"`
@@ -31,10 +32,21 @@ func (cfg *Config) GetStreamDefaults() *StreamDefaults {
 	}
 }
 
-// GetRTMPDefaults returns hardcoded RTMP configuration defaults  
+// GetRTMPDefaults returns RTMP configuration with defaults
 func (cfg *Config) GetRTMPDefaults() *RTMPDefaults {
+	port := cfg.RTMP.Port
+	if port == 0 {
+		port = 1935
+	}
+	
+	host := cfg.RTMP.Host
+	if host == "" {
+		host = "0.0.0.0"
+	}
+	
 	return &RTMPDefaults{
-		Port:    1935,
+		Port:    port,
+		Host:    host,
 		Enabled: true,
 	}
 }
@@ -47,16 +59,24 @@ type StreamDefaults struct {
 	CheckInterval time.Duration
 }
 
-// RTMPDefaults holds hardcoded RTMP configuration
+// RTMPConfig holds RTMP configuration from YAML
+type RTMPConfig struct {
+	Port int    `yaml:"port"`
+	Host string `yaml:"host"`
+}
+
+// RTMPDefaults holds RTMP configuration with defaults applied
 type RTMPDefaults struct {
 	Port    int
+	Host    string
 	Enabled bool
 }
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Port int    `yaml:"port"`
-	Host string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	Host        string `yaml:"host"`
+	ExternalURL string `yaml:"external_url"`
 }
 
 // HLSConfig holds HLS conversion settings

@@ -51,13 +51,11 @@ func (s *Server) SetStreamHandlers(onStart, onStop func(string)) {
 func (s *Server) Start(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
-	// For now, we'll use a simple approach: start FFmpeg to listen for RTMP input
-	// and automatically begin HLS conversion when a stream is detected
 	rtmpDefaults := s.config.GetRTMPDefaults()
 	log.Printf("🎬 RTMP server (FFmpeg-based) starting on port %d", rtmpDefaults.Port)
 
-	// Start a background process to monitor for incoming RTMP streams
-	go s.monitorRTMPStreams()
+	// Start FFmpeg RTMP server immediately to listen for connections
+	go s.startRTMPToHLSConversion("default")
 
 	// Wait for context cancellation
 	<-s.ctx.Done()
@@ -83,26 +81,6 @@ func (s *Server) Stop() error {
 	return nil
 }
 
-// monitorRTMPStreams monitors for RTMP streams using FFmpeg
-func (s *Server) monitorRTMPStreams() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-ticker.C:
-			// Check if there's an incoming RTMP stream
-			// For simplicity, we'll start the FFmpeg RTMP server and HLS conversion together
-			if len(s.activeStreams) == 0 {
-				// Try to start RTMP->HLS conversion
-				// This will wait for an RTMP stream and start processing when it arrives
-				go s.startRTMPToHLSConversion("default")
-			}
-		}
-	}
-}
 
 // startRTMPToHLSConversion starts FFmpeg to receive RTMP and convert to HLS
 func (s *Server) startRTMPToHLSConversion(streamKey string) error {
@@ -110,10 +88,11 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 	defer s.mutex.Unlock()
 
 	if _, exists := s.activeStreams[streamKey]; exists {
+		log.Printf("⚠️ RTMP server already running for stream: %s", streamKey)
 		return nil // Stream already processing
 	}
 
-	log.Printf("🎥 Starting RTMP listener for stream: %s", streamKey)
+	log.Printf("🎥 Starting RTMP server for stream: %s", streamKey)
 
 	// Get defaults
 	streamDefaults := s.config.GetStreamDefaults()
@@ -127,12 +106,14 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 	// Output path for HLS
 	outputPath := filepath.Join(streamDefaults.OutputDir, "output.m3u8")
 
-	// FFmpeg command to act as RTMP server and convert to HLS
-	// This will listen on the RTMP port and wait for incoming streams
+	// Use a simple "live" path - no complex stream key needed for personal server
+	rtmpURL := fmt.Sprintf("rtmp://%s:%d/live", rtmpDefaults.Host, rtmpDefaults.Port)
+	
+	// Start FFmpeg as an RTMP server that accepts connections and converts to HLS
 	cmd := exec.CommandContext(s.ctx, "ffmpeg",
-		"-f", "flv", // RTMP input format
-		"-listen", "1", // Listen for incoming connections
-		"-i", fmt.Sprintf("rtmp://0.0.0.0:%d/live/%s", rtmpDefaults.Port, streamKey),
+		"-f", "flv",
+		"-listen", "1",
+		"-i", rtmpURL,
 		"-c:v", "libx264",
 		"-crf", "18",
 		"-preset", "veryfast",
@@ -142,18 +123,20 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 		"-hls_time", fmt.Sprintf("%d", s.config.HLS.SegmentTime),
 		"-hls_list_size", fmt.Sprintf("%d", s.config.HLS.PlaylistSize),
 		"-hls_flags", "delete_segments",
-		"-y", // Overwrite output files
+		"-y",
 		outputPath,
 	)
+	
+	log.Printf("✅ RTMP server listening on %s", rtmpURL)
 
 	// Start the command
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start FFmpeg RTMP server: %w", err)
 	}
 
-	log.Printf("✅ FFmpeg RTMP listener started on port %d, waiting for actual stream connection", rtmpDefaults.Port)
+	log.Printf("✅ FFmpeg RTMP server started, waiting for connection on %s", rtmpURL)
 
-	// Store stream context but mark as waiting
+	// Store stream context
 	s.activeStreams[streamKey] = &StreamContext{
 		StreamKey: streamKey,
 		StartTime: time.Now(),
@@ -178,8 +161,7 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 				if !streamStarted && currentHLSActive {
 					streamStarted = true
 					lastHLSUpdate = time.Now()
-					log.Printf("🔴 Actual RTMP stream detected for: %s", streamKey)
-					// NOW notify stream start (only when actual data flows)
+					log.Printf("🔴 RTMP stream connected for: %s", streamKey)
 					if s.onStreamStart != nil {
 						go s.onStreamStart(streamKey)
 					}
@@ -196,7 +178,20 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 					if s.onStreamStop != nil {
 						go s.onStreamStop(streamKey)
 					}
+					
+					// Force kill FFmpeg first, then restart
+					log.Printf("🔄 Killing FFmpeg and restarting RTMP server for: %s", streamKey)
+					if cmd.Process != nil {
+						cmd.Process.Kill()
+					}
 					s.stopStreamProcessing(streamKey, s.activeStreams[streamKey])
+					
+					// Restart RTMP server automatically after a brief delay
+					go func() {
+						time.Sleep(3 * time.Second) // Longer delay to ensure port is freed
+						log.Printf("🔄 Restarting RTMP server for: %s", streamKey)
+						s.startRTMPToHLSConversion(streamKey)
+					}()
 					return
 				}
 
@@ -208,9 +203,16 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 							go s.onStreamStop(streamKey)
 						}
 					} else {
-						log.Printf("📡 RTMP listener stopped (no stream received): %s", streamKey)
+						log.Printf("📡 RTMP server stopped (no stream received): %s", streamKey)
 					}
 					s.stopStreamProcessing(streamKey, s.activeStreams[streamKey])
+					
+					// Restart RTMP server automatically after a brief delay
+					go func() {
+						log.Printf("🔄 Restarting RTMP server for: %s", streamKey)
+						time.Sleep(2 * time.Second)
+						s.startRTMPToHLSConversion(streamKey)
+					}()
 					return
 				}
 			}

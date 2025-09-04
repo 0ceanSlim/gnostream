@@ -1,6 +1,12 @@
 server:
   port: 8080
   host: "127.0.0.1"
+  external_url: "https://live.yourdomain.com"  # Public URL for Nostr events
+
+rtmp:
+  port: 1935
+  host: "localhost"  # Set this to your server's IP address
+  # Connect from OBS using: rtmp://localhost:1935/live (no stream key needed)
 
 hls:
   # How long each video segment is in seconds
