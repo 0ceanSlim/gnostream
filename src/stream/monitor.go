@@ -68,11 +68,22 @@ func (m *Monitor) cleanupIncorrectLiveEvents() {
 func (m *Monitor) Start(ctx context.Context) error {
 	log.Println("🎬 Stream monitor started")
 
-	ticker := time.NewTicker(m.streamConfig.CheckInterval)
-	defer ticker.Stop()
-
 	// Start stream info watcher in a separate goroutine
 	go m.watchStreamInfo(ctx)
+
+	// Check if RTMP is enabled - if so, only do file watching, not stream detection
+	rtmpDefaults := m.config.GetRTMPDefaults()
+	if rtmpDefaults.Enabled {
+		log.Println("📡 RTMP mode: Only running file watcher (stream detection handled by RTMP server)")
+		// Just wait for context cancellation - RTMP server handles stream detection
+		<-ctx.Done()
+		log.Println("📁 File watcher stopping...")
+		return nil
+	}
+
+	// Traditional mode: do active stream detection
+	ticker := time.NewTicker(m.streamConfig.CheckInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -535,6 +546,7 @@ func (m *Monitor) checkStreamInfoChanges() error {
 	if err != nil {
 		return err
 	}
+
 
 	// Only broadcast update if we have an active stream and the info actually changed
 	if changed && m.isActive && m.metadata != nil {

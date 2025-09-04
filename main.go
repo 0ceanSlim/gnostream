@@ -42,6 +42,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Always start the stream monitor (for file watching and other monitoring)
+	go func() {
+		log.Println("📡 Starting stream monitor...")
+		if err := monitor.Start(ctx); err != nil {
+			log.Printf("Stream monitor error: %v", err)
+		}
+	}()
+
 	var rtmpServer *rtmp.Server
 	rtmpDefaults := cfg.GetRTMPDefaults()
 	if rtmpDefaults.Enabled {
@@ -58,14 +66,6 @@ func main() {
 			log.Printf("🎬 Starting RTMP server on port %d...", rtmpDefaults.Port)
 			if err := rtmpServer.Start(ctx); err != nil {
 				log.Printf("RTMP server error: %v", err)
-			}
-		}()
-	} else {
-		// Start traditional stream monitoring if RTMP server is disabled
-		go func() {
-			log.Println("📡 Starting stream monitor...")
-			if err := monitor.Start(ctx); err != nil {
-				log.Printf("Stream monitor error: %v", err)
 			}
 		}()
 	}

@@ -296,8 +296,9 @@ func (cfg *Config) CheckAndReloadStreamInfo() (*StreamInfo, bool, error) {
 	lastModTime := cfg.streamInfoModTime
 	cfg.streamInfoMutex.RUnlock()
 
+
 	// Check if file has been modified
-	if fileInfo.ModTime().After(lastModTime) {
+	if !fileInfo.ModTime().Equal(lastModTime) {
 		// File was modified, reload it
 		newInfo, newModTime, err := LoadStreamInfoWithModTime(cfg.StreamInfoPath)
 		if err != nil {
