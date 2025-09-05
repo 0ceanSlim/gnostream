@@ -216,14 +216,6 @@ func (m *Monitor) stopStream() error {
 
 		// Broadcast Nostr end event and capture response
 		go func() {
-			// Store original event ID before sending end event
-			var originalEventID string
-			if m.metadata.LastNostrEvent != "" {
-				if id, err := nostr.ExtractEventID(m.metadata.LastNostrEvent); err == nil {
-					originalEventID = id
-				}
-			}
-
 			eventJSON, successfulRelays := m.nostrClient.BroadcastEndEventWithResponse(m.metadata)
 			m.mutex.Lock()
 			m.metadata.LastNostrEvent = eventJSON
@@ -231,13 +223,18 @@ func (m *Monitor) stopStream() error {
 			m.mutex.Unlock()
 
 			// Check if we should send a deletion request for non-recorded streams
-			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && originalEventID != "" {
-				log.Printf("🗑️ Stream ended without recording - sending deletion request")
-				deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
-					originalEventID, 
-					"Stream ended without recording - removing temporary live event",
-				)
-				log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && eventJSON != "" {
+				// Extract the ID of the end event we just published
+				if endEventID, err := nostr.ExtractEventID(eventJSON); err == nil {
+					log.Printf("🗑️ Stream ended without recording - sending deletion request")
+					deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
+						endEventID, 
+						"Stream ended without recording - removing temporary live event",
+					)
+					log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+				} else {
+					log.Printf("❌ Failed to extract event ID from end event for deletion: %v", err)
+				}
 			}
 
 			// Save final metadata with Nostr info
@@ -521,14 +518,6 @@ func (m *Monitor) stopStreamsrc() error {
 
 		// Broadcast Nostr end event and capture response
 		go func() {
-			// Store original event ID before sending end event
-			var originalEventID string
-			if m.metadata.LastNostrEvent != "" {
-				if id, err := nostr.ExtractEventID(m.metadata.LastNostrEvent); err == nil {
-					originalEventID = id
-				}
-			}
-
 			eventJSON, successfulRelays := m.nostrClient.BroadcastEndEventWithResponse(m.metadata)
 			m.mutex.Lock()
 			m.metadata.LastNostrEvent = eventJSON
@@ -536,13 +525,18 @@ func (m *Monitor) stopStreamsrc() error {
 			m.mutex.Unlock()
 
 			// Check if we should send a deletion request for non-recorded streams
-			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && originalEventID != "" {
-				log.Printf("🗑️ Stream ended without recording - sending deletion request")
-				deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
-					originalEventID, 
-					"Stream ended without recording - removing temporary live event",
-				)
-				log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && eventJSON != "" {
+				// Extract the ID of the end event we just published
+				if endEventID, err := nostr.ExtractEventID(eventJSON); err == nil {
+					log.Printf("🗑️ Stream ended without recording - sending deletion request")
+					deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
+						endEventID, 
+						"Stream ended without recording - removing temporary live event",
+					)
+					log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+				} else {
+					log.Printf("❌ Failed to extract event ID from end event for deletion: %v", err)
+				}
 			}
 
 			// Save final metadata with Nostr info
