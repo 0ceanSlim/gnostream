@@ -5,14 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcutil/bech32"
 	"golang.org/x/net/websocket"
 
 	"gnostream/src/config"
@@ -29,6 +32,52 @@ type Event struct {
 	Sig       string     `json:"sig"`
 }
 
+// DecodeNsec decodes a Bech32 encoded nsec to its corresponding hex private key
+func DecodeNsec(nsec string) (string, error) {
+	log.Printf("🔑 Decoding nsec private key...")
+
+	hrp, data, err := bech32.Decode(nsec)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode bech32 nsec: %w", err)
+	}
+
+	if hrp != "nsec" {
+		return "", errors.New("invalid hrp, expected 'nsec'")
+	}
+
+	decodedData, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert bits: %w", err)
+	}
+
+	if len(decodedData) != 32 {
+		return "", fmt.Errorf("invalid private key length: got %d, expected 32", len(decodedData))
+	}
+
+	privateKey := strings.ToLower(hex.EncodeToString(decodedData))
+	log.Printf("🔑 Successfully decoded nsec to hex private key")
+
+	return privateKey, nil
+}
+
+// DerivePublicKey derives a public key from a private key
+func DerivePublicKey(privateKeyHex string) (string, error) {
+	if len(privateKeyHex) != 64 {
+		return "", fmt.Errorf("private key must be 64 hex characters")
+	}
+
+	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
+	if err != nil {
+		return "", fmt.Errorf("invalid hex private key: %w", err)
+	}
+
+	_, publicKey := btcec.PrivKeyFromBytes(privateKeyBytes)
+	publicKeyBytes := schnorr.SerializePubKey(publicKey)
+	publicKeyHex := hex.EncodeToString(publicKeyBytes)
+
+	return publicKeyHex, nil
+}
+
 // Client handles Nostr relay communication
 type Client struct {
 	privateKey *btcec.PrivateKey
@@ -39,7 +88,7 @@ type Client struct {
 // NewClient creates a new Nostr client
 func NewClient(cfg *config.NostrRelayConfig) (*Client, error) {
 	// Check for placeholder values
-	if cfg.PublicKey == "your-nostr-public-key-hex" || cfg.PrivateKey == "your-nostr-private-key-hex" {
+	if cfg.PrivateKey == "your-nostr-private-key-nsec" || cfg.PrivateKey == "" {
 		return &Client{
 			privateKey: nil,
 			publicKey:  "",
@@ -47,25 +96,35 @@ func NewClient(cfg *config.NostrRelayConfig) (*Client, error) {
 		}, nil // Return a disabled client
 	}
 
-	// Decode private key
-	keyBytes, err := hex.DecodeString(cfg.PrivateKey)
+	// Decode nsec private key to hex
+	privateKeyHex, err := DecodeNsec(cfg.PrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key (should be 64 hex characters): %w", err)
+		return nil, fmt.Errorf("failed to decode nsec private key: %w", err)
+	}
+
+	// Parse hex private key
+	keyBytes, err := hex.DecodeString(privateKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode hex private key: %w", err)
 	}
 
 	privateKey, _ := btcec.PrivKeyFromBytes(keyBytes)
 
-	// Decode public key
-	publicKeyBytes, err := hex.DecodeString(cfg.PublicKey)
+	// Derive public key from private key
+	publicKeyHex, err := DerivePublicKey(privateKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode public key (should be 64 hex characters): %w", err)
+		return nil, fmt.Errorf("failed to derive public key: %w", err)
 	}
 
-	publicKey := fmt.Sprintf("%x", publicKeyBytes)
+	// Store derived public key in config for reference
+	cfg.PublicKey = publicKeyHex
+
+	log.Printf("🔑 Nostr keys initialized successfully")
+	log.Printf("🔑 Public key: %s", publicKeyHex)
 
 	return &Client{
 		privateKey: privateKey,
-		publicKey:  publicKey,
+		publicKey:  publicKeyHex,
 		relays:     cfg.Relays,
 	}, nil
 }
@@ -336,6 +395,87 @@ func (c *Client) BroadcastCancelEvent(dtag string) {
 	}
 
 	c.publishEvent(event)
+}
+
+// BroadcastDeletionEvent broadcasts a NIP-09 deletion request event
+func (c *Client) BroadcastDeletionEvent(eventID string, reason string) {
+	if c.privateKey == nil {
+		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
+		return
+	}
+
+	log.Printf("🗑️ Broadcasting NIP-09 deletion request for event: %s", eventID)
+
+	tags := [][]string{
+		{"e", eventID},
+		{"k", "30311"}, // kind 30311 (live streaming event)
+	}
+
+	content := reason
+	if content == "" {
+		content = "Stream ended without recording"
+	}
+
+	event, err := c.createEvent(5, content, tags) // kind 5 = deletion request
+	if err != nil {
+		log.Printf("Failed to create deletion event: %v", err)
+		return
+	}
+
+	successfulRelays := c.publishEvent(event)
+	log.Printf("🗑️ Deletion request sent to %d relays", len(successfulRelays))
+}
+
+// BroadcastDeletionEventWithResponse broadcasts a NIP-09 deletion request and returns event info
+func (c *Client) BroadcastDeletionEventWithResponse(eventID string, reason string) (string, []string) {
+	if c.privateKey == nil {
+		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
+		return "", []string{}
+	}
+
+	log.Printf("🗑️ Broadcasting NIP-09 deletion request for event: %s", eventID)
+
+	tags := [][]string{
+		{"e", eventID},
+		{"k", "30311"}, // kind 30311 (live streaming event)
+	}
+
+	content := reason
+	if content == "" {
+		content = "Stream ended without recording"
+	}
+
+	event, err := c.createEvent(5, content, tags) // kind 5 = deletion request
+	if err != nil {
+		log.Printf("Failed to create deletion event: %v", err)
+		return "", []string{}
+	}
+
+	// Convert event to JSON
+	eventJSON, _ := json.Marshal(event)
+
+	successfulRelays := c.publishEvent(event)
+	log.Printf("🗑️ Deletion request sent to %d relays", len(successfulRelays))
+	
+	return string(eventJSON), successfulRelays
+}
+
+// ExtractEventID extracts the event ID from a JSON event string
+func ExtractEventID(eventJSON string) (string, error) {
+	if eventJSON == "" {
+		return "", errors.New("empty event JSON")
+	}
+
+	var event Event
+	if err := json.Unmarshal([]byte(eventJSON), &event); err != nil {
+		return "", fmt.Errorf("failed to parse event JSON: %w", err)
+	}
+
+	if event.ID == "" {
+		return "", errors.New("no event ID found")
+	}
+
+	return event.ID, nil
 }
 
 // createEvent creates and signs a Nostr event

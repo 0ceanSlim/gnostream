@@ -216,11 +216,29 @@ func (m *Monitor) stopStream() error {
 
 		// Broadcast Nostr end event and capture response
 		go func() {
+			// Store original event ID before sending end event
+			var originalEventID string
+			if m.metadata.LastNostrEvent != "" {
+				if id, err := nostr.ExtractEventID(m.metadata.LastNostrEvent); err == nil {
+					originalEventID = id
+				}
+			}
+
 			eventJSON, successfulRelays := m.nostrClient.BroadcastEndEventWithResponse(m.metadata)
 			m.mutex.Lock()
 			m.metadata.LastNostrEvent = eventJSON
 			m.metadata.SuccessfulRelays = successfulRelays
 			m.mutex.Unlock()
+
+			// Check if we should send a deletion request for non-recorded streams
+			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && originalEventID != "" {
+				log.Printf("🗑️ Stream ended without recording - sending deletion request")
+				deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
+					originalEventID, 
+					"Stream ended without recording - removing temporary live event",
+				)
+				log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+			}
 
 			// Save final metadata with Nostr info
 			metadataPath := filepath.Join(m.streamConfig.OutputDir, "metadata.json")
@@ -241,6 +259,9 @@ func (m *Monitor) stopStream() error {
 func (m *Monitor) startFFmpeg() error {
 	outputPath := filepath.Join(m.streamConfig.OutputDir, "output.m3u8")
 
+	// Get HLS config from stream info
+	hlsConfig := m.config.GetHLSConfig()
+
 	// Build FFmpeg arguments
 	args := []string{
 		"-i", m.streamConfig.RTMPUrl,
@@ -250,7 +271,7 @@ func (m *Monitor) startFFmpeg() error {
 		"-c:a", "aac",
 		"-b:a", "160k",
 		"-f", "hls",
-		"-hls_time", fmt.Sprintf("%d", m.config.HLS.SegmentTime),
+		"-hls_time", fmt.Sprintf("%d", hlsConfig.SegmentTime),
 	}
 
 	// Configure HLS behavior based on recording setting
@@ -261,7 +282,7 @@ func (m *Monitor) startFFmpeg() error {
 	} else {
 		// Live only: use playlist size limit and delete old segments
 		args = append(args,
-			"-hls_list_size", fmt.Sprintf("%d", m.config.HLS.PlaylistSize),
+			"-hls_list_size", fmt.Sprintf("%d", hlsConfig.PlaylistSize),
 			"-hls_flags", "delete_segments",
 		)
 	}
@@ -500,11 +521,29 @@ func (m *Monitor) stopStreamsrc() error {
 
 		// Broadcast Nostr end event and capture response
 		go func() {
+			// Store original event ID before sending end event
+			var originalEventID string
+			if m.metadata.LastNostrEvent != "" {
+				if id, err := nostr.ExtractEventID(m.metadata.LastNostrEvent); err == nil {
+					originalEventID = id
+				}
+			}
+
 			eventJSON, successfulRelays := m.nostrClient.BroadcastEndEventWithResponse(m.metadata)
 			m.mutex.Lock()
 			m.metadata.LastNostrEvent = eventJSON
 			m.metadata.SuccessfulRelays = successfulRelays
 			m.mutex.Unlock()
+
+			// Check if we should send a deletion request for non-recorded streams
+			if m.config.Nostr.DeleteNonRecorded && m.metadata.RecordingURL == "" && originalEventID != "" {
+				log.Printf("🗑️ Stream ended without recording - sending deletion request")
+				deletionJSON, deletionRelays := m.nostrClient.BroadcastDeletionEventWithResponse(
+					originalEventID, 
+					"Stream ended without recording - removing temporary live event",
+				)
+				log.Printf("🗑️ Deletion request sent: %s to %d relays", deletionJSON, len(deletionRelays))
+			}
 
 			// Save final metadata with Nostr info
 			metadataPath := filepath.Join(m.streamConfig.OutputDir, "metadata.json")

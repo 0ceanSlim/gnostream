@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 type Config struct {
 	Server               ServerConfig     `yaml:"server"`
 	RTMP                 RTMPConfig       `yaml:"rtmp"`
-	HLS                  HLSConfig        `yaml:"hls"`
 	Nostr                NostrRelayConfig `yaml:"nostr"`
 	StreamInfoPath    string      `yaml:"stream_info_path"`
 	StreamInfo        *StreamInfo `yaml:"-"`    // Not stored in main config, loaded separately
@@ -88,11 +88,12 @@ type HLSConfig struct {
 
 // StreamInfo represents the user-configurable stream information
 type StreamInfo struct {
-	Title  string   `yaml:"title"`
-	Summary string   `yaml:"summary"`
-	Image  string   `yaml:"image"`
-	Tags   []string `yaml:"tags"`
-	Record bool     `yaml:"record"` // Whether to record/archive the stream
+	Title       string    `yaml:"title"`
+	Summary     string    `yaml:"summary"`
+	Image       string    `yaml:"image"`
+	Tags        []string  `yaml:"tags"`
+	Record      bool      `yaml:"record"` // Whether to record/archive the stream
+	HLS         HLSConfig `yaml:"hls"`    // HLS conversion settings
 }
 
 // StreamMetadata represents the complete stream information (user info + runtime data)
@@ -114,9 +115,12 @@ type StreamMetadata struct {
 
 // NostrRelayConfig represents Nostr configuration
 type NostrRelayConfig struct {
-	PublicKey  string   `yaml:"public_key"`
-	PrivateKey string   `yaml:"private_key"`
-	Relays     []string `yaml:"relays"`
+	PrivateKey        string   `yaml:"private_key"`         // nsec format private key
+	Relays            []string `yaml:"relays"`
+	DeleteNonRecorded bool     `yaml:"delete_non_recorded"` // Send NIP-09 deletion for streams without recordings
+	
+	// Derived fields (not stored in YAML)
+	PublicKey  string `yaml:"-"` // Will be derived from private key
 }
 
 // Load reads and parses the main configuration file
@@ -156,12 +160,6 @@ func Load(path string) (*Config, error) {
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8080
 	}
-	if cfg.HLS.SegmentTime == 0 {
-		cfg.HLS.SegmentTime = 10
-	}
-	if cfg.HLS.PlaylistSize == 0 {
-		cfg.HLS.PlaylistSize = 10
-	}
 	if cfg.StreamInfoPath == "" {
 		cfg.StreamInfoPath = "stream-info.yml"
 	}
@@ -184,25 +182,15 @@ func Load(path string) (*Config, error) {
 func (cfg *Config) validateAndWarn() {
 	warnings := []string{}
 
-	// Check Nostr keys
-	if cfg.Nostr.PublicKey == "your-nostr-public-key-hex" || cfg.Nostr.PublicKey == "" {
-		warnings = append(warnings, "Nostr public key is not configured - Nostr broadcasting will not work")
-	}
-	
-	if cfg.Nostr.PrivateKey == "your-nostr-private-key-hex" || cfg.Nostr.PrivateKey == "" {
-		warnings = append(warnings, "Nostr private key is not configured - Nostr broadcasting will not work")
-	}
-
-	// Check if keys are valid hex (basic check)
-	if cfg.Nostr.PublicKey != "your-nostr-public-key-hex" && cfg.Nostr.PublicKey != "" {
-		if len(cfg.Nostr.PublicKey) != 64 {
-			warnings = append(warnings, "Nostr public key should be 64 hex characters")
-		}
-	}
-	
-	if cfg.Nostr.PrivateKey != "your-nostr-private-key-hex" && cfg.Nostr.PrivateKey != "" {
-		if len(cfg.Nostr.PrivateKey) != 64 {
-			warnings = append(warnings, "Nostr private key should be 64 hex characters")
+	// Check Nostr private key
+	if cfg.Nostr.PrivateKey == "your-nostr-private-key-nsec" || cfg.Nostr.PrivateKey == "" {
+		warnings = append(warnings, "Nostr private key (nsec) is not configured - Nostr broadcasting will not work")
+	} else {
+		// Basic nsec validation
+		if !strings.HasPrefix(cfg.Nostr.PrivateKey, "nsec1") {
+			warnings = append(warnings, "Nostr private key should be in nsec format (starts with 'nsec1')")
+		} else if len(cfg.Nostr.PrivateKey) != 63 {
+			warnings = append(warnings, "Nostr private key should be 63 characters long (nsec format)")
 		}
 	}
 
@@ -283,6 +271,32 @@ func (cfg *Config) GetStreamMetadata() *StreamMetadata {
 		Image:   cfg.StreamInfo.Image,
 		Tags:    cfg.StreamInfo.Tags,
 	}
+}
+
+// GetHLSConfig returns HLS configuration with defaults applied
+func (cfg *Config) GetHLSConfig() *HLSConfig {
+	cfg.streamInfoMutex.RLock()
+	defer cfg.streamInfoMutex.RUnlock()
+	
+	if cfg.StreamInfo == nil {
+		// Return defaults if no stream info
+		return &HLSConfig{
+			SegmentTime:  10,
+			PlaylistSize: 10,
+		}
+	}
+
+	hls := cfg.StreamInfo.HLS
+	
+	// Apply defaults if not set
+	if hls.SegmentTime == 0 {
+		hls.SegmentTime = 10
+	}
+	if hls.PlaylistSize == 0 {
+		hls.PlaylistSize = 10
+	}
+
+	return &hls
 }
 
 // CheckAndReloadStreamInfo checks if stream info file has been modified and reloads if needed

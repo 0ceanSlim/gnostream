@@ -36,8 +36,8 @@ func NewServer(cfg *config.Config, monitor *stream.Monitor) *Server {
 func (s *Server) Router() http.Handler {
 	mux := http.NewServeMux()
 
-	// Static files - using /res/ prefix to match your structure
-	mux.Handle("/res/", http.StripPrefix("/res/", http.FileServer(http.Dir("www/res/"))))
+	// Static files - using /res/ prefix to match your structure (with CORS)
+	mux.Handle("/res/", http.StripPrefix("/res/", s.corsHandler(http.FileServer(http.Dir("www/res/")))))
 
 	// Get stream defaults
 	streamDefaults := s.config.GetStreamDefaults()
@@ -46,13 +46,13 @@ func (s *Server) Router() http.Handler {
 	mux.Handle("/live/", http.StripPrefix("/live/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.OutputDir)))))
 	mux.Handle("/archive/", http.StripPrefix("/archive/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.ArchiveDir)))))
 
-	// API endpoints
-	mux.HandleFunc("/api/stream-data", s.handleStreamData)
-	mux.HandleFunc("/api/health", s.handleHealth)
+	// API endpoints (with CORS)
+	mux.HandleFunc("/api/stream-data", s.corsWrapper(s.handleStreamData))
+	mux.HandleFunc("/api/health", s.corsWrapper(s.handleHealth))
 
-	// Web pages with HTMX routing
-	mux.HandleFunc("/", s.handleLive)
-	mux.HandleFunc("/archive", s.handleArchive)
+	// Web pages with HTMX routing (with CORS)
+	mux.HandleFunc("/", s.corsWrapper(s.handleLive))
+	mux.HandleFunc("/archive", s.corsWrapper(s.handleArchive))
 
 	return mux
 }
@@ -62,6 +62,22 @@ func (s *Server) corsHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// corsWrapper adds CORS headers for HandlerFunc routes
+func (s *Server) corsWrapper(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
 
 		if r.Method == "OPTIONS" {

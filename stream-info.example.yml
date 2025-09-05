@@ -1,0 +1,31 @@
+# Stream Info Configuration
+# This file contains your stream's metadata that will be broadcast to Nostr relays
+# You can edit this file while the stream is running and the changes will be picked up
+#
+# Copy this file to stream-info.yml and customize it for your stream
+
+title: "My Live Stream"
+summary: "An awesome live stream broadcasting to Nostr"
+image: "https://example.com/my-stream-thumbnail.jpg"
+tags:
+  - "live"
+  - "music"
+  - "talk"
+  - "gaming"
+
+# Recording Settings
+# true = Record stream for later viewing (ignores HLS playlist_size, keeps all segments)
+# false = Live only (segments deleted after playlist_size limit, no archive)
+record: false
+
+# HLS Settings
+hls:
+  # How long each video segment is in seconds
+  # Lower = less latency, more responsive (2-6s)
+  # Higher = more efficient, less responsive (10-30s) 
+  segment_time: 10
+  
+  # How many segments to keep in the playlist
+  # With 10s segments: 10 = ~100s of rewind capability
+  # Higher = more rewind/storage, Lower = less rewind/storage
+  playlist_size: 10

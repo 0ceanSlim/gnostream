@@ -109,6 +109,9 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 	// Use a simple "live" path - no complex stream key needed for personal server
 	rtmpURL := fmt.Sprintf("rtmp://%s:%d/live", rtmpDefaults.Host, rtmpDefaults.Port)
 	
+	// Get HLS config from stream info
+	hlsConfig := s.config.GetHLSConfig()
+
 	// Start FFmpeg as an RTMP server that accepts connections and converts to HLS
 	cmd := exec.CommandContext(s.ctx, "ffmpeg",
 		"-f", "flv",
@@ -120,8 +123,8 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 		"-c:a", "aac",
 		"-b:a", "160k",
 		"-f", "hls",
-		"-hls_time", fmt.Sprintf("%d", s.config.HLS.SegmentTime),
-		"-hls_list_size", fmt.Sprintf("%d", s.config.HLS.PlaylistSize),
+		"-hls_time", fmt.Sprintf("%d", hlsConfig.SegmentTime),
+		"-hls_list_size", fmt.Sprintf("%d", hlsConfig.PlaylistSize),
 		"-hls_flags", "delete_segments",
 		"-y",
 		outputPath,

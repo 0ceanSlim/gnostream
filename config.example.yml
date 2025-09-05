@@ -8,24 +8,13 @@ rtmp:
   host: "localhost"  # Set this to your server's IP address
   # Connect from OBS using: rtmp://localhost:1935/live (no stream key needed)
 
-hls:
-  # How long each video segment is in seconds
-  # Lower = less latency, more responsive (2-6s)
-  # Higher = more efficient, less responsive (10-30s) 
-  segment_time: 10
-  
-  # How many segments to keep in the playlist
-  # With 10s segments: 10 = ~100s of rewind capability
-  # Higher = more rewind/storage, Lower = less rewind/storage
-  playlist_size: 10
-
 # Path to the stream info YAML file (optional, defaults to "stream-info.yml")
 # You can put this file anywhere you want
 stream_info_path: "stream-info.yml"
 
 nostr:
-  public_key: "your-nostr-public-key-hex"
-  private_key: "your-nostr-private-key-hex"
+  private_key: "your-nostr-private-key-nsec"  # Your nsec private key (e.g., nsec1abc...)
+  delete_non_recorded: false  # Send NIP-09 deletion requests for streams without recordings
   relays:
     - "wss://relay.damus.io"
     - "wss://nos.lol"
