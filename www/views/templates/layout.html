@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     
-    <link rel="icon" href="/res/img/favicon.ico">
+    <link rel="icon" href="/res/img/favicon.svg" type="image/svg+xml">
     
     <style>
         :root {
@@ -140,6 +140,7 @@
             border: 1px solid var(--cyber-green);
             position: relative;
             overflow: hidden;
+            isolation: isolate;
         }
 
         .terminal-box::before {
@@ -151,6 +152,8 @@
             height: 2px;
             background: linear-gradient(90deg, transparent, var(--cyber-green), transparent);
             animation: scan-line 3s linear infinite;
+            z-index: 1;
+            clip: rect(0, auto, 2px, 0);
         }
 
         @keyframes scan-line {
@@ -189,6 +192,24 @@
 
         .cyber-button:hover::before {
             left: 100%;
+        }
+
+        /* Special button that blocks scan line without breaking hover effects */
+        .cyber-button-scan-safe {
+            position: relative;
+            z-index: 999;
+        }
+
+        .cyber-button-scan-safe::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -4px;
+            right: -4px;
+            bottom: -2px;
+            background: var(--bg-matrix);
+            z-index: -1;
+            border-radius: inherit;
         }
 
         .status-live {
@@ -297,6 +318,15 @@
                 transform: translateY(0) scale(1);
             }
         }
+
+        /* Line clamping for stream card descriptions */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
     
 </head>
@@ -307,7 +337,7 @@
     <div class="max-w-6xl mx-auto px-4 md:px-8 relative z-10">
         {{template "header" .}}
         
-        <div class="fade-in">
+        <div id="main-content" class="fade-in" hx-on:after-swap="this.classList.add('fade-in')">
             {{if eq .View "archive-view"}}
                 {{template "archive-view" .}}
             {{else}}
@@ -319,8 +349,12 @@
     </div>
 
     <script>
+        // Prevent redeclaration on HTMX navigation
+        window.matrixRainInterval = window.matrixRainInterval || null;
+        window.glitchInterval = window.glitchInterval || null;
+        
         // Matrix rain effect
-        function createMatrixRain() {
+        window.createMatrixRain = window.createMatrixRain || function() {
             const container = document.getElementById('matrixRain');
             const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
             
@@ -339,23 +373,33 @@
                 }, 5000);
             }
             
-            setInterval(createDrop, 100);
+            if (!window.matrixRainInterval) {
+                window.matrixRainInterval = setInterval(createDrop, 100);
+            }
+        };
+        
+        // Start matrix rain only once
+        if (!window.matrixRainInterval) {
+            window.createMatrixRain();
         }
         
-        // Start matrix rain
-        createMatrixRain();
-        
-        // Add glitch effect to random elements
-        setInterval(() => {
-            const elements = document.querySelectorAll('h1, h2, h3, .cyber-title');
-            const randomEl = elements[Math.floor(Math.random() * elements.length)];
-            if (randomEl && Math.random() < 0.1) {
-                randomEl.classList.add('glitch');
-                randomEl.setAttribute('data-text', randomEl.textContent);
-                setTimeout(() => randomEl.classList.remove('glitch'), 1000);
-            }
-        }, 3000);
+        // Add glitch effect to random elements - only once
+        if (!window.glitchInterval) {
+            window.glitchInterval = setInterval(() => {
+                const elements = document.querySelectorAll('h1, h2, h3, .cyber-title');
+                const randomEl = elements[Math.floor(Math.random() * elements.length)];
+                if (randomEl && Math.random() < 0.1) {
+                    randomEl.classList.add('glitch');
+                    randomEl.setAttribute('data-text', randomEl.textContent);
+                    setTimeout(() => randomEl.classList.remove('glitch'), 1000);
+                }
+            }, 3000);
+        }
     </script>
+
+    <!-- Load application JavaScript files after DOM is ready -->
+    <script src="/res/js/stream.js?v=v6"></script>
+    <script src="/res/js/archive.js?v=v6"></script>
 </body>
 </html>
 {{end}}

@@ -16,9 +16,10 @@
 </header>
 
 <script>
-    function toggleNav() {
+    // Prevent function redeclaration on HTMX navigation
+    window.toggleNav = window.toggleNav || function() {
         const navbar = document.getElementById("navbar");
         navbar.classList.toggle("hidden");
-    }
+    };
 </script>
 {{end}}

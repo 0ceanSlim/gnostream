@@ -1,0 +1,44 @@
+{{define "past-streams"}}
+<section class="terminal-box rounded-md p-6">
+    <div class="flex items-center text-sm text-cyan-400 font-mono mb-6">
+        <span>NEURAL_ARCHIVE.log</span>
+        <span class="animate-pulse ml-2 text-green-400">●</span>
+        <span class="ml-auto text-green-400">[RECENT_MEMORIES]</span>
+    </div>
+    
+    <h2 class="text-2xl font-bold mb-6 cyber-title neon-glow-subtle">
+        RECENT_TRANSMISSIONS
+    </h2>
+    
+    <!-- Loading State -->
+    <div id="pastStreamsLoading" class="text-center py-8">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-cyan-400 font-mono">ACCESSING_NEURAL_LOGS...</p>
+    </div>
+    
+    <!-- Past Streams Grid -->
+    <div id="pastStreamsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Stream cards will be inserted here -->
+    </div>
+    
+    <!-- Empty State -->
+    <div id="pastStreamsEmpty" class="hidden text-center py-8">
+        <div class="text-4xl mb-4 text-cyan-400">◉</div>
+        <p class="text-cyan-400 font-mono">NO_RECENT_TRANSMISSIONS</p>
+        <p class="text-xs text-gray-500 mt-2 font-mono">Neural archive is empty</p>
+    </div>
+    
+    <!-- View All Link -->
+    <div class="text-center mt-6">
+        <a href="/archive" 
+           hx-get="/archive" 
+           hx-push-url="/archive" 
+           hx-target="#main-content" 
+           hx-swap="innerHTML"
+           class="cyber-button cyber-button-scan-safe px-6 py-3 rounded font-mono text-sm uppercase tracking-wide">
+            <span class="mr-2">▣</span>
+            ACCESS_FULL_VAULT
+        </a>
+    </div>
+</section>
+{{end}}

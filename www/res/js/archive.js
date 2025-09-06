@@ -1,11 +1,21 @@
-let archiveData = [];
-let currentHls = null;
+// Prevent redeclaration errors on HTMX navigation
+window.archiveData = window.archiveData || [];
+window.currentHls = window.currentHls || null;
 
+// Load archive when DOM is ready OR when HTMX content is swapped in
 document.addEventListener('DOMContentLoaded', function() {
-    loadArchive();
+    window.loadArchive();
 });
 
-async function loadArchive() {
+// Also load when HTMX swaps in new content (for SPA navigation)
+document.addEventListener('htmx:afterSettle', function(evt) {
+    // Only load if we're on the archive page
+    if (document.getElementById('archiveLoading')) {
+        window.loadArchive();
+    }
+});
+
+window.loadArchive = window.loadArchive || async function() {
     const loadingEl = document.getElementById('archiveLoading');
     const gridEl = document.getElementById('archiveGrid');
     const emptyEl = document.getElementById('archiveEmpty');
@@ -44,15 +54,15 @@ async function loadArchive() {
             })
         );
         
-        archiveData = streams.filter(s => s !== null)
+        window.archiveData = streams.filter(s => s !== null)
             .sort((a, b) => parseInt(b.starts || 0) - parseInt(a.starts || 0));
         
-        if (archiveData.length === 0) {
+        if (window.archiveData.length === 0) {
             if (emptyEl) emptyEl.classList.remove('hidden');
             return;
         }
         
-        renderArchive();
+        window.renderArchive();
         
     } catch (error) {
         console.error('Error loading archive:', error);
@@ -60,16 +70,16 @@ async function loadArchive() {
     }
 }
 
-function renderArchive() {
+window.renderArchive = window.renderArchive || function() {
     const gridEl = document.getElementById('archiveGrid');
-    if (!gridEl || archiveData.length === 0) return;
+    if (!gridEl || window.archiveData.length === 0) return;
     
-    const html = archiveData.map(createArchiveCard).join('');
+    const html = window.archiveData.map(window.createArchiveCard).join('');
     gridEl.innerHTML = html;
     gridEl.classList.remove('hidden');
 }
 
-function createArchiveCard(stream) {
+window.createArchiveCard = window.createArchiveCard || function(stream) {
     const date = new Date(parseInt(stream.starts) * 1000);
     const duration = stream.ends ? 
         Math.round((parseInt(stream.ends) - parseInt(stream.starts)) / 60) + ' min' : 
@@ -77,7 +87,7 @@ function createArchiveCard(stream) {
     
     return `
         <div class="terminal-box rounded-lg p-6 cursor-pointer transition-all transform hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/20"
-             onclick="openStreamModal('${stream.folderPath}')">
+             onclick="window.openStreamModal('${stream.folderPath}')">
             <!-- Terminal Header -->
             <div class="flex items-center text-xs text-cyan-400 font-mono mb-3">
                 <span>NEURAL_${stream.folderPath.slice(-6)}.stream</span>
@@ -125,8 +135,8 @@ function createArchiveCard(stream) {
     `;
 }
 
-function openStreamModal(folderPath) {
-    const stream = archiveData.find(s => s.folderPath === folderPath);
+window.openStreamModal = window.openStreamModal || function(folderPath) {
+    const stream = window.archiveData.find(s => s.folderPath === folderPath);
     if (!stream) return;
     
     const modal = document.getElementById('streamModal');
@@ -148,37 +158,37 @@ function openStreamModal(folderPath) {
     
     // Load video
     if (video && stream.recording_url) {
-        loadModalVideo(video, stream.recording_url);
+        window.loadModalVideo(video, stream.recording_url);
     }
     
     if (modal) modal.classList.remove('hidden');
 }
 
-function loadModalVideo(video, streamUrl) {
-    if (currentHls) {
-        currentHls.destroy();
-        currentHls = null;
+window.loadModalVideo = window.loadModalVideo || function(video, streamUrl) {
+    if (window.currentHls) {
+        window.currentHls.destroy();
+        window.currentHls = null;
     }
     
     if (Hls.isSupported()) {
-        currentHls = new Hls();
-        currentHls.loadSource(streamUrl);
-        currentHls.attachMedia(video);
+        window.currentHls = new Hls();
+        window.currentHls.loadSource(streamUrl);
+        window.currentHls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
     }
 }
 
-function closeModal() {
+window.closeModal = window.closeModal || function() {
     const modal = document.getElementById('streamModal');
     const video = document.getElementById('modalVideo');
     
     if (modal) modal.classList.add('hidden');
     if (video) video.pause();
     
-    if (currentHls) {
-        currentHls.destroy();
-        currentHls = null;
+    if (window.currentHls) {
+        window.currentHls.destroy();
+        window.currentHls = null;
     }
 }
 

@@ -14,10 +14,12 @@
 </footer>
 
 <script>
-// Fake uptime counter
-let startTime = Date.now();
-function updateUptime() {
-    const elapsed = Date.now() - startTime;
+// Fake uptime counter - prevent redeclaration on HTMX navigation
+window.startTime = window.startTime || Date.now();
+window.uptimeInterval = window.uptimeInterval || null;
+
+window.updateUptime = window.updateUptime || function() {
+    const elapsed = Date.now() - window.startTime;
     const hours = Math.floor(elapsed / 3600000).toString().padStart(2, '0');
     const minutes = Math.floor((elapsed % 3600000) / 60000).toString().padStart(2, '0');
     const seconds = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
@@ -25,7 +27,10 @@ function updateUptime() {
     if (uptimeEl) {
         uptimeEl.textContent = `${hours}:${minutes}:${seconds}`;
     }
+};
+
+if (!window.uptimeInterval) {
+    window.uptimeInterval = setInterval(window.updateUptime, 1000);
 }
-setInterval(updateUptime, 1000);
 </script>
 {{end}}

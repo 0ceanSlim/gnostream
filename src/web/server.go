@@ -184,10 +184,22 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Printf("Template error: %v", err)
-		http.Error(w, "Template error", http.StatusInternalServerError)
-		return
+	
+	// Check if this is an HTMX request for partial content
+	if r.Header.Get("HX-Request") == "true" {
+		// Return only the content part
+		if err := s.templates.ExecuteTemplate(w, "live-view", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Return full layout
+		if err := s.templates.ExecuteTemplate(w, "layout", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -208,10 +220,22 @@ func (s *Server) handleArchive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.templates.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Printf("Template error: %v", err)
-		http.Error(w, "Template error", http.StatusInternalServerError)
-		return
+	
+	// Check if this is an HTMX request for partial content
+	if r.Header.Get("HX-Request") == "true" {
+		// Return only the content part
+		if err := s.templates.ExecuteTemplate(w, "archive-view", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Return full layout
+		if err := s.templates.ExecuteTemplate(w, "layout", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
