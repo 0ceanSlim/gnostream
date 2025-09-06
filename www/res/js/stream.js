@@ -28,21 +28,25 @@ async function updateStreamData() {
         const response = await fetch('/api/stream-data');
         const data = await response.json();
         
-        const newStatus = data.status?.toLowerCase() || 'offline';
+        // Handle new response format with metadata wrapper
+        const metadata = data.metadata || data;
+        const viewerCount = data.active_viewers || 0;
+        
+        const newStatus = metadata.status?.toLowerCase() || 'offline';
         
         // Update status display
-        updateStatusDisplay(newStatus);
+        updateStatusDisplay(newStatus, viewerCount);
         
         // Update metadata
-        updateStreamInfo(data);
+        updateStreamInfo(metadata);
         
         // Handle status changes
         if (newStatus !== currentStatus) {
             console.log(`Status changed: ${currentStatus} -> ${newStatus}`);
             currentStatus = newStatus;
             
-            if (newStatus === 'live' && data.stream_url) {
-                loadStream(data.stream_url);
+            if (newStatus === 'live' && metadata.stream_url) {
+                loadStream(metadata.stream_url);
             }
         }
         
@@ -51,11 +55,13 @@ async function updateStreamData() {
     }
 }
 
-function updateStatusDisplay(status) {
+function updateStatusDisplay(status, viewerCount = 0) {
     const statusEl = document.getElementById('streamStatus');
     if (!statusEl) return;
     
-    statusEl.innerHTML = `<span class="mr-2">◉</span>${status.toUpperCase()}<span class="ml-2 text-sm opacity-75">[NODE_ACTIVE]</span>`;
+    const viewerText = status === 'live' ? `<span class="ml-2 text-sm opacity-75">[${viewerCount} VIEWERS]</span>` : '<span class="ml-2 text-sm opacity-75">[NODE_ACTIVE]</span>';
+    
+    statusEl.innerHTML = `<span class="mr-2">◉</span>${status.toUpperCase()}${viewerText}`;
     statusEl.className = 'px-8 py-4 text-xl font-bold rounded-md font-mono uppercase tracking-widest cyber-title';
     
     if (status === 'live') {

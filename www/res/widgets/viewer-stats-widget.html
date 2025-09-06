@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-Time Viewer Stats Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyber-green: #00ff41;
+            --bg-terminal: #001100;
+        }
+        
+        body {
+            background: transparent;
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .neon-glow-subtle {
+            text-shadow: 
+                0 0 2px var(--cyber-green),
+                0 0 4px var(--cyber-green);
+        }
+        
+        .terminal-box {
+            background: rgba(0, 17, 0, 0.95);
+            border: 2px solid var(--cyber-green);
+            box-shadow: 
+                0 0 10px var(--cyber-green),
+                inset 0 0 10px rgba(0, 255, 65, 0.1);
+        }
+    </style>
+</head>
+<body class="text-green-400">
+    <div class="terminal-box p-6 rounded-md w-80 m-4">
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <span class="text-green-300 opacity-90 text-lg">Active:</span>
+                <span class="font-bold text-green-400 text-2xl neon-glow-subtle" id="active">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-yellow-300 opacity-90 text-lg">Peak:</span>
+                <span class="font-bold text-yellow-400 text-2xl" id="peak">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-blue-300 opacity-90 text-lg">All-Time:</span>
+                <span class="font-bold text-blue-400 text-2xl" id="total">0</span>
+            </div>
+        </div>
+    </div>
+    <script src="/res/js/widgets.js"></script>
+</body>
+</html>

@@ -8,22 +8,25 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gnostream/src/analytics"
 	"gnostream/src/config"
 	"gnostream/src/stream"
 )
 
 // Server represents the web server
 type Server struct {
-	config    *config.Config
-	monitor   *stream.Monitor
-	templates *template.Template
+	config        *config.Config
+	monitor       *stream.Monitor
+	templates     *template.Template
+	viewerTracker *analytics.ViewerTracker
 }
 
 // NewServer creates a new web server instance
 func NewServer(cfg *config.Config, monitor *stream.Monitor) *Server {
 	server := &Server{
-		config:  cfg,
-		monitor: monitor,
+		config:        cfg,
+		monitor:       monitor,
+		viewerTracker: analytics.NewViewerTracker(),
 	}
 
 	// Load templates
@@ -42,17 +45,20 @@ func (s *Server) Router() http.Handler {
 	// Get stream defaults
 	streamDefaults := s.config.GetStreamDefaults()
 
-	// HLS streaming files (with CORS)
-	mux.Handle("/live/", http.StripPrefix("/live/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.OutputDir)))))
-	mux.Handle("/archive/", http.StripPrefix("/archive/", s.corsHandler(http.FileServer(http.Dir(streamDefaults.ArchiveDir)))))
+	// HLS streaming files (with CORS and viewer tracking)
+	mux.Handle("/live/", http.StripPrefix("/live/", s.hlsTrackingHandler(http.FileServer(http.Dir(streamDefaults.OutputDir)))))
+	mux.Handle("/archive/", http.StripPrefix("/archive/", s.hlsTrackingHandler(http.FileServer(http.Dir(streamDefaults.ArchiveDir)))))
 
 	// API endpoints (with CORS)
 	mux.HandleFunc("/api/stream-data", s.corsWrapper(s.handleStreamData))
 	mux.HandleFunc("/api/health", s.corsWrapper(s.handleHealth))
+	mux.HandleFunc("/api/viewers", s.corsWrapper(s.handleViewerMetrics))
+
 
 	// Web pages with HTMX routing (with CORS)
 	mux.HandleFunc("/", s.corsWrapper(s.handleLive))
 	mux.HandleFunc("/archive", s.corsWrapper(s.handleArchive))
+	
 
 	return mux
 }
@@ -87,6 +93,38 @@ func (s *Server) corsWrapper(next http.HandlerFunc) http.HandlerFunc {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// hlsTrackingHandler wraps file serving with HLS viewer tracking
+func (s *Server) hlsTrackingHandler(next http.Handler) http.Handler {
+	return s.corsHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Track HLS requests
+		if analytics.IsHLSRequest(r) {
+			s.viewerTracker.TrackRequest(r)
+			log.Printf("📊 HLS Request: %s from %s (Active viewers: %d)", 
+				r.URL.Path, 
+				s.getClientIP(r),
+				s.viewerTracker.GetActiveViewerCount())
+		}
+		
+		next.ServeHTTP(w, r)
+	}))
+}
+
+// getClientIP extracts the real client IP (duplicate from analytics, but needed here)
+func (s *Server) getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		return strings.TrimSpace(ips[0])
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	ip := r.RemoteAddr
+	if colon := strings.LastIndex(ip, ":"); colon != -1 {
+		ip = ip[:colon]
+	}
+	return ip
 }
 
 // loadTemplates loads HTML templates with your structure
@@ -180,9 +218,16 @@ func (s *Server) handleArchive(w http.ResponseWriter, r *http.Request) {
 // handleStreamData serves stream metadata as JSON
 func (s *Server) handleStreamData(w http.ResponseWriter, r *http.Request) {
 	metadata := s.monitor.GetCurrentMetadata()
+	viewerCount := s.viewerTracker.GetActiveViewerCount()
+
+	// Add viewer count to response
+	response := map[string]interface{}{
+		"metadata":       metadata,
+		"active_viewers": viewerCount,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(metadata); err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding JSON: %v", err)
 		http.Error(w, "JSON encoding error", http.StatusInternalServerError)
 		return
@@ -208,3 +253,17 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// handleViewerMetrics serves viewer analytics data
+func (s *Server) handleViewerMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics := s.viewerTracker.GetMetrics()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		log.Printf("Error encoding viewer metrics JSON: %v", err)
+		http.Error(w, "JSON encoding error", http.StatusInternalServerError)
+		return
+	}
+}
+
+

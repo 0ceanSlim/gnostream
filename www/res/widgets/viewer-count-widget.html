@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewer Count Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyber-green: #00ff41;
+            --bg-terminal: #001100;
+        }
+        
+        body {
+            background: transparent;
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .cyber-title {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+        }
+        
+        .neon-glow {
+            text-shadow: 
+                0 0 3px var(--cyber-green),
+                0 0 6px var(--cyber-green),
+                0 0 9px var(--cyber-green);
+        }
+        
+        .terminal-box {
+            background: rgba(0, 17, 0, 0.9);
+            border: 2px solid var(--cyber-green);
+            box-shadow: 
+                0 0 10px var(--cyber-green),
+                inset 0 0 10px rgba(0, 255, 65, 0.1);
+        }
+    </style>
+</head>
+<body class="text-green-400">
+    <div class="terminal-box p-6 rounded-md text-center min-w-[200px] m-4">
+        <div class="text-6xl font-bold neon-glow cyber-title mb-2" id="viewer-count">
+            0
+        </div>
+        <div class="text-lg opacity-75 uppercase tracking-wider">
+            VIEWERS
+        </div>
+    </div>
+    <script src="/res/js/widgets.js"></script>
+</body>
+</html>
