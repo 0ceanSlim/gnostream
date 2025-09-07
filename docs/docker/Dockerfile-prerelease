@@ -13,13 +13,13 @@ RUN ARCH=$(uname -m) && \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac && \
     echo "Detected architecture: $ARCH -> gnostream-linux-$GNOSTREAM_ARCH" && \
-    PRERELEASE_VERSION=$(curl -s https://api.github.com/repos/yourusername/gnostream/releases | jq -r '.[] | select(.prerelease == true) | .tag_name' | head -n1) && \
+    PRERELEASE_VERSION=$(curl -s https://api.github.com/repos/0ceanslim/gnostream/releases | jq -r '.[] | select(.prerelease == true) | .tag_name' | head -n1) && \
     if [ -z "$PRERELEASE_VERSION" ]; then \
         echo "No pre-release found, falling back to latest release" && \
-        PRERELEASE_VERSION=$(curl -s https://api.github.com/repos/yourusername/gnostream/releases/latest | jq -r .tag_name); \
+        PRERELEASE_VERSION=$(curl -s https://api.github.com/repos/0ceanslim/gnostream/releases/latest | jq -r .tag_name); \
     fi && \
     echo "Downloading GNOSTREAM pre-release version: $PRERELEASE_VERSION for linux-$GNOSTREAM_ARCH" && \
-    DOWNLOAD_URL="https://github.com/yourusername/gnostream/releases/download/$PRERELEASE_VERSION/gnostream-linux-$GNOSTREAM_ARCH.tar.gz" && \
+    DOWNLOAD_URL="https://github.com/0ceanslim/gnostream/releases/download/$PRERELEASE_VERSION/gnostream-linux-$GNOSTREAM_ARCH.tar.gz" && \
     curl -L "$DOWNLOAD_URL" -o gnostream-release.tar.gz && \
     echo "Extracting release..." && \
     tar -xzf gnostream-release.tar.gz && \
