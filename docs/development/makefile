@@ -157,6 +157,15 @@ endif
 build-image: check-docker ## Build the Docker build image
 	@echo "$(YELLOW)Building Docker build image...$(NC)"
 	@echo "$(YELLOW)Copying .dockerignore for build...$(NC)"
+ifeq ($(OS),Windows_NT)
+	@copy .dockerignore "$(PROJECT_ROOT)\.dockerignore.build" >nul
+	@cd $(PROJECT_ROOT) && copy .dockerignore.build .dockerignore >nul && docker build \
+		--no-cache \
+		-f docs/development/Dockerfile.build \
+		-t $(BUILD_IMAGE) \
+		--build-arg BUILDKIT_INLINE_CACHE=1 \
+		. && del /f .dockerignore .dockerignore.build >nul 2>&1
+else
 	@cp .dockerignore $(PROJECT_ROOT)/.dockerignore.build
 	@cd $(PROJECT_ROOT) && cp .dockerignore.build .dockerignore && docker build \
 		--no-cache \
@@ -164,6 +173,7 @@ build-image: check-docker ## Build the Docker build image
 		-t $(BUILD_IMAGE) \
 		--build-arg BUILDKIT_INLINE_CACHE=1 \
 		. && rm -f .dockerignore .dockerignore.build
+endif
 	@echo "$(GREEN)Build image ready$(NC)"
 
 test: check-docker ## Run all tests (integration + code review)
