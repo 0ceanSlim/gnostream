@@ -1,0 +1,316 @@
+@import "tailwindcss";
+
+/* Custom CSS variables and styles for gnostream */
+:root {
+    --cyber-green: #00ff41;
+    --cyber-blue: #0ff;
+    --cyber-pink: #ff0080;
+    --cyber-yellow: #ffff00;
+    --bg-matrix: #0d0d0d;
+    --bg-terminal: #001100;
+    --text-matrix: #00ff41;
+    --text-glow: #00ff4180;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cyber-green) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--cyber-green);
+    border-radius: 4px;
+    box-shadow: 0 0 10px var(--cyber-green);
+}
+
+body {
+    background: var(--bg-matrix);
+    font-family: 'Share Tech Mono', monospace;
+    overflow-x: hidden;
+}
+
+.cyber-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+}
+
+.matrix-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.glitch {
+    position: relative;
+    animation: glitch-main 2s infinite;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch::before {
+    animation: glitch-1 0.5s infinite;
+    color: var(--cyber-pink);
+    z-index: -1;
+}
+
+.glitch::after {
+    animation: glitch-2 0.5s infinite;
+    color: var(--cyber-blue);
+    z-index: -2;
+}
+
+@keyframes glitch-main {
+    0%, 90%, 100% { transform: translateX(0); }
+    10% { transform: translateX(-2px); }
+    20% { transform: translateX(2px); }
+    30% { transform: translateX(-1px); }
+}
+
+@keyframes glitch-1 {
+    0%, 90%, 100% { transform: translateX(0); }
+    10% { transform: translateX(2px); }
+    20% { transform: translateX(-2px); }
+    30% { transform: translateX(1px); }
+}
+
+@keyframes glitch-2 {
+    0%, 90%, 100% { transform: translateX(0); }
+    10% { transform: translateX(-1px); }
+    20% { transform: translateX(1px); }
+    30% { transform: translateX(-2px); }
+}
+
+.neon-glow {
+    text-shadow: 
+        0 0 3px var(--cyber-green),
+        0 0 6px var(--cyber-green);
+}
+
+.neon-glow-subtle {
+    text-shadow: 
+        0 0 2px var(--cyber-green),
+        0 0 4px var(--cyber-green);
+}
+
+.neon-border {
+    border: 1px solid var(--cyber-green);
+    box-shadow: 
+        0 0 5px var(--cyber-green),
+        inset 0 0 5px var(--text-glow);
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.terminal-box {
+    background: var(--bg-terminal);
+    border: 1px solid var(--cyber-green);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.terminal-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyber-green), transparent);
+    animation: scan-line 3s linear infinite;
+    z-index: 1;
+    clip: rect(0, auto, 2px, 0);
+}
+
+@keyframes scan-line {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.cyber-button {
+    background: transparent;
+    border: 2px solid var(--cyber-green);
+    color: var(--cyber-green);
+    font-family: 'Share Tech Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.cyber-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.4), transparent);
+    transition: left 0.5s ease;
+}
+
+.cyber-button:hover {
+    color: black;
+    background: var(--cyber-green);
+    box-shadow: 0 0 20px var(--cyber-green);
+}
+
+.cyber-button:hover::before {
+    left: 100%;
+}
+
+/* Special button that blocks scan line without breaking hover effects */
+.cyber-button-scan-safe {
+    position: relative;
+    z-index: 999;
+}
+
+.cyber-button-scan-safe::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -4px;
+    right: -4px;
+    bottom: -2px;
+    background: var(--bg-matrix);
+    z-index: -1;
+    border-radius: inherit;
+}
+
+.status-live {
+    background: var(--bg-terminal);
+    border: 2px solid var(--cyber-pink);
+    color: var(--cyber-pink);
+    animation: pulse-live 1.5s infinite;
+}
+
+.status-offline {
+    background: var(--bg-terminal);
+    border: 2px solid #666;
+    color: #666;
+}
+
+@keyframes pulse-live {
+    0%, 100% { 
+        box-shadow: 0 0 5px var(--cyber-pink);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 20px var(--cyber-pink), 0 0 30px var(--cyber-pink);
+        transform: scale(1.02);
+    }
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid transparent;
+    border-top: 3px solid var(--cyber-green);
+    border-right: 3px solid var(--cyber-blue);
+    border-radius: 50%;
+    animation: spin-cyber 1s linear infinite;
+}
+
+@keyframes spin-cyber {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.matrix-rain {
+    position: absolute;
+    top: -100px;
+    animation: matrix-fall 10s linear infinite;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--cyber-green);
+    opacity: 0.3;
+    font-size: 12px;
+}
+
+@keyframes matrix-fall {
+    to { transform: translateY(100vh); }
+}
+
+.cyber-grid {
+    background-image: 
+        linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.video-frame {
+    border: 2px solid var(--cyber-green);
+    box-shadow: 
+        0 0 20px rgba(0, 255, 65, 0.3),
+        inset 0 0 20px rgba(0, 255, 65, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.video-frame::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(0, 255, 65, 0.1) 50%,
+        transparent 70%
+    );
+    animation: video-scan 4s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes video-scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.fade-in {
+    animation: fadeInCyber 1s ease-out;
+}
+
+@keyframes fadeInCyber {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px) scale(0.95);
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Line clamping for stream card descriptions */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -1,0 +1,48 @@
+# GNOSTREAM Development Build Ignore File
+# Used only for binary builds in docs/development/
+# Excludes large streaming archives and unnecessary files from Docker build context
+
+# Streaming archives (large .ts video files) - CRITICAL FOR BUILD PERFORMANCE
+www/live/archive/
+*.ts
+
+# Build outputs
+build/
+dist/
+*.tar.gz
+*.zip
+
+# Development files
+.git/
+tmp/
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config files that might contain secrets
+config.yml
+stream-info.yml
+
+# Node modules (if any)
+node_modules/
+
+# Go build cache
+.cache/
+
+# Large media files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm

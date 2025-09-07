@@ -48,4 +48,6 @@ www/live/
 /.claude
 
 config.yml
-stream-info.yml
+stream-info.
+
+/build

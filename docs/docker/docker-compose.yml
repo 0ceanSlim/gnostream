@@ -1,0 +1,11 @@
+services:
+  gnostream:
+    build: . # Uses the new Dockerfile in current directory
+    container_name: gnostream-app
+    ports:
+      - "8181:8181"
+    environment:
+      - GNOSTREAM_ENV=production
+    restart: unless-stopped
+
+volumes: {}
