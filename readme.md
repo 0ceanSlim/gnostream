@@ -14,7 +14,6 @@ Live streaming server with RTMP support and automatic Nostr broadcasting. Built 
 
 ## Requirements
 
-- **Go 1.21+** (for building from source)
 - **FFmpeg** (required for RTMP processing and HLS conversion)
 
 ### Installing FFmpeg
@@ -36,32 +35,61 @@ brew install ffmpeg
 
 ## Quick Start
 
-1. **Clone and build**
+### Option 1: Download Release Binary (Recommended)
+
+1. **Download the latest release**
+   - Go to [Releases](https://github.com/yourusername/gnostream/releases)
+   - Download the appropriate file for your platform:
+     - Linux: `gnostream-linux-amd64.tar.gz`
+     - macOS (Intel): `gnostream-darwin-amd64.tar.gz` 
+     - macOS (M1/M2): `gnostream-darwin-arm64.tar.gz`
+     - Windows: `gnostream-windows-amd64.zip`
+
+2. **Extract and setup**
    ```bash
-   git clone https://github.com/your-repo/gnostream.git
+   # Linux/macOS
+   tar -xzf gnostream-*.tar.gz
+   cd gnostream-*/
+   
+   # Windows: Extract the ZIP file and open the folder
+   ```
+
+3. **Configure**
+   ```bash
+   # Copy and edit the example configs
+   cp config.example.yml config.yml
+   cp stream-info.example.yml stream-info.yml
+   
+   # Edit config.yml with your Nostr private key and server settings
+   # Edit stream-info.yml with your stream details
+   ```
+
+4. **Run**
+   ```bash
+   # Linux/macOS
+   ./gnostream
+   
+   # Windows
+   gnostream.exe
+   ```
+
+5. **Start streaming**
+   - **RTMP URL**: `rtmp://your-server-ip:1935/live`
+   - **Web viewer**: `http://your-server-ip:8181`
+
+### Option 2: Build from Source
+
+1. **Prerequisites**: Go 1.21+
+
+2. **Clone and build**
+   ```bash
+   git clone https://github.com/yourusername/gnostream.git
    cd gnostream
    go mod tidy
    go build -o gnostream
    ```
 
-2. **Copy example configs**
-   ```bash
-   cp config.example.yml config.yml
-   cp stream-info.example.yml stream-info.yml
-   ```
-
-3. **Configure**
-   - Edit `config.yml` with your Nostr private key and server settings
-   - Edit `stream-info.yml` with your stream details
-
-4. **Run**
-   ```bash
-   ./gnostream
-   ```
-
-5. **Start streaming**
-   - **RTMP URL**: `rtmp://your-server-ip:1935/live`
-   - **Web viewer**: `http://your-server-ip:8080`
+3. **Follow steps 3-5 from Option 1 above**
 
 ## Configuration
 
@@ -69,7 +97,7 @@ brew install ffmpeg
 
 ```yaml
 server:
-  port: 8080
+  port: 8181
   host: "0.0.0.0"
   external_url: "https://live.yourdomain.com"
 
