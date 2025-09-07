@@ -210,10 +210,43 @@ for platform in "${PLATFORMS[@]}"; do
     ARCHIVE_DIR="/tmp/build/$ARCHIVE"
     mkdir -p "$ARCHIVE_DIR"
     
-    # Copy files to archive (binary and www folder with bundled assets)
+    # Copy files to archive (binary, www folder with bundled assets, and example configs)
     echo -n "    Packaging... "
     cp "/tmp/build/$BINARY" "$ARCHIVE_DIR/"
     cp -r www "$ARCHIVE_DIR/"
+    
+    # Copy example config files for users to customize
+    cp config.example.yml "$ARCHIVE_DIR/"
+    cp stream-info.example.yml "$ARCHIVE_DIR/"
+    
+    # Create quick start README for users
+    cat > "$ARCHIVE_DIR/README.txt" << 'EOF'
+# GNOSTREAM Quick Start
+
+## Setup
+1. Copy config.example.yml to config.yml and edit as needed
+2. Copy stream-info.example.yml to stream-info.yml and edit as needed
+3. Run the gnostream binary
+
+## Files Included
+- gnostream (or gnostream.exe) - Main application binary
+- www/ - Web interface and assets (required)
+- config.example.yml - Example configuration file
+- stream-info.example.yml - Example stream info file
+
+## Configuration
+Edit the copied config files to match your setup:
+- config.yml: Server port, logging, and application settings
+- stream-info.yml: Stream title, description, and metadata
+
+## Running
+Linux/macOS: ./gnostream
+Windows: gnostream.exe
+
+Web interface will be available at: http://localhost:8181
+
+For more information, visit: https://github.com/yourusername/gnostream
+EOF
     
     # Create archive
     cd /tmp/build
