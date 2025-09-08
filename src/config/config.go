@@ -335,17 +335,19 @@ func (cfg *Config) CheckAndReloadStreamInfo() (*StreamInfo, bool, error) {
 func SaveStreamMetadata(path string, metadata *StreamMetadata) error {
 	// Convert to map for JSON serialization with lowercase keys
 	data := map[string]interface{}{
-		"title":         metadata.Title,
-		"summary":       metadata.Summary,
-		"image":         metadata.Image,
-		"tags":          metadata.Tags,
-		"pubkey":        metadata.Pubkey,
-		"dtag":          metadata.Dtag,
-		"stream_url":    metadata.StreamURL,
-		"recording_url": metadata.RecordingURL,
-		"starts":        metadata.Starts,
-		"ends":          metadata.Ends,
-		"status":        metadata.Status,
+		"title":            metadata.Title,
+		"summary":          metadata.Summary,
+		"image":            metadata.Image,
+		"tags":             metadata.Tags,
+		"pubkey":           metadata.Pubkey,
+		"dtag":             metadata.Dtag,
+		"stream_url":       metadata.StreamURL,
+		"recording_url":    metadata.RecordingURL,
+		"starts":           metadata.Starts,
+		"ends":             metadata.Ends,
+		"status":           metadata.Status,
+		"last_nostr_event": metadata.LastNostrEvent,
+		"successful_relays": metadata.SuccessfulRelays,
 	}
 
 	return SaveJSON(path, data)

@@ -48,6 +48,9 @@ www/live/
 /.claude
 
 config.yml
-stream-info.
+stream-info.yml
 
 /build
+
+gnostream
+gnostream.exe

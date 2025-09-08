@@ -109,11 +109,17 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 	// Use a simple "live" path - no complex stream key needed for personal server
 	rtmpURL := fmt.Sprintf("rtmp://%s:%d/live", rtmpDefaults.Host, rtmpDefaults.Port)
 	
+	// Check for any stream info changes before starting
+	_, _, err := s.config.CheckAndReloadStreamInfo()
+	if err != nil {
+		log.Printf("Warning: failed to reload stream info: %v", err)
+	}
+	
 	// Get HLS config from stream info
 	hlsConfig := s.config.GetHLSConfig()
 
-	// Start FFmpeg as an RTMP server that accepts connections and converts to HLS
-	cmd := exec.CommandContext(s.ctx, "ffmpeg",
+	// Build FFmpeg arguments
+	args := []string{
 		"-f", "flv",
 		"-listen", "1",
 		"-i", rtmpURL,
@@ -124,11 +130,25 @@ func (s *Server) startRTMPToHLSConversion(streamKey string) error {
 		"-b:a", "160k",
 		"-f", "hls",
 		"-hls_time", fmt.Sprintf("%d", hlsConfig.SegmentTime),
-		"-hls_list_size", fmt.Sprintf("%d", hlsConfig.PlaylistSize),
-		"-hls_flags", "delete_segments",
-		"-y",
-		outputPath,
-	)
+	}
+
+	// Configure HLS behavior based on recording setting
+	if s.config.StreamInfo != nil && s.config.StreamInfo.Record {
+		// Recording enabled: keep all segments, don't delete
+		args = append(args, "-hls_list_size", "0") // 0 = unlimited playlist size
+		// Don't add delete_segments flag - keep all segments for archival
+	} else {
+		// Live only: use playlist size limit and delete old segments
+		args = append(args,
+			"-hls_list_size", fmt.Sprintf("%d", hlsConfig.PlaylistSize),
+			"-hls_flags", "delete_segments",
+		)
+	}
+
+	args = append(args, "-y", outputPath)
+
+	// Start FFmpeg as an RTMP server that accepts connections and converts to HLS
+	cmd := exec.CommandContext(s.ctx, "ffmpeg", args...)
 	
 	log.Printf("✅ RTMP server listening on %s", rtmpURL)
 
