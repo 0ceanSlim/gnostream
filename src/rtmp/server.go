@@ -396,11 +396,28 @@ func (s *Server) checkConfigChanges() error {
 
 		// Restart all active streams with new settings
 		s.mutex.Lock()
+		streamsToStop := make(map[string]*StreamContext)
 		for streamKey, stream := range s.activeStreams {
 			log.Printf("🔄 Restarting FFmpeg for stream: %s", streamKey)
-			s.stopStreamProcessing(streamKey, stream)
+			streamsToStop[streamKey] = stream
 		}
+		// Clear active streams before releasing lock
+		s.activeStreams = make(map[string]*StreamContext)
 		s.mutex.Unlock()
+
+		// Stop streams without holding the mutex to avoid deadlock
+		for streamKey, stream := range streamsToStop {
+			// Kill FFmpeg process directly
+			if stream.FFmpegCmd != nil && stream.FFmpegCmd.Process != nil {
+				if err := stream.FFmpegCmd.Process.Kill(); err != nil {
+					log.Printf("Error killing FFmpeg process for %s: %v", streamKey, err)
+				}
+			}
+			// Notify stream stop
+			if s.onStreamStop != nil {
+				go s.onStreamStop(streamKey)
+			}
+		}
 
 		// Start a new RTMP server after brief delay
 		go func() {
