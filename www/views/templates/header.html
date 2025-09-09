@@ -1,12 +1,48 @@
 {{define "header"}}
-<header class="terminal-box rounded-md p-6 mb-8 relative">
+<header class="terminal-box rounded-md p-4 lg:p-6 mb-8 relative">
     <div class="flex items-center justify-between">
         <!-- Logo -->
         {{template "app-name"}}
         
-        <!-- Navigation -->
-        {{template "navigation"}}
+        <!-- Desktop Navigation & Mobile Menu Button -->
+        <div class="flex items-center">
+            <!-- Desktop Navigation -->
+            <nav class="hidden lg:flex">
+                <ul class="flex space-x-8">
+                    <li>
+                        <a href="/"
+                           hx-get="/"
+                           hx-push-url="/"
+                           hx-target="#main-content"
+                           hx-swap="innerHTML"
+                           class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                            <span class="text-red-400 mr-2">●</span>
+                            LIVE_FEED
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/archive"
+                           hx-get="/archive"
+                           hx-push-url="/archive"
+                           hx-target="#main-content"
+                           hx-swap="innerHTML"
+                           class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                            <span class="text-blue-400 mr-2">▣</span>
+                            DATA_VAULT
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile Menu Button -->
+            <button id="mobile-menu-button" class="lg:hidden p-3 cyber-button text-sm">
+                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </div>
     </div>
+    
     
     <!-- Terminal prompt line -->
     <div class="mt-4 text-xs opacity-60 font-mono">
@@ -16,10 +52,148 @@
 </header>
 
 <script>
-    // Prevent function redeclaration on HTMX navigation
-    window.toggleNav = window.toggleNav || function() {
-        const navbar = document.getElementById("navbar");
-        navbar.classList.toggle("hidden");
-    };
+    // Initialize mobile navigation - prevent duplicate setup
+    if (!window.mobileNavInitialized) {
+        window.mobileNavInitialized = true;
+        
+        function initMobileNav() {
+            console.log('Initializing mobile navigation...');
+            const mobileButton = document.getElementById('mobile-menu-button');
+            
+            console.log('Found elements:', {
+                button: !!mobileButton,
+                buttonElement: mobileButton
+            });
+            
+            if (mobileButton && !mobileButton.hasAttribute('data-nav-initialized')) {
+                console.log('Setting up mobile nav click handler');
+                
+                // Mark button as initialized to prevent duplicate listeners
+                mobileButton.setAttribute('data-nav-initialized', 'true');
+                
+                // Remove any existing listeners
+                mobileButton.onclick = null;
+                
+                mobileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Mobile menu button clicked');
+                    
+                    // Check if dropdown already exists
+                    let dropdown = document.getElementById('mobile-dropdown');
+                    
+                    if (dropdown) {
+                        // Remove existing dropdown
+                        dropdown.remove();
+                        console.log('Dropdown closed');
+                        return;
+                    }
+                    
+                    // Create dropdown element
+                    dropdown = document.createElement('div');
+                    dropdown.id = 'mobile-dropdown';
+                    
+                    // Get button position for positioning
+                    const buttonRect = mobileButton.getBoundingClientRect();
+                    
+                    // Style the dropdown
+                    dropdown.style.cssText = `
+                        position: absolute;
+                        top: ${buttonRect.bottom + window.scrollY + 5}px;
+                        right: ${window.innerWidth - buttonRect.right}px;
+                        background: #001100;
+                        border: 2px solid #00ff41;
+                        border-radius: 8px;
+                        padding: 10px;
+                        min-width: 200px;
+                        z-index: 1000;
+                        box-shadow: 0 4px 20px rgba(0, 255, 65, 0.3);
+                        font-family: 'Share Tech Mono', monospace;
+                    `;
+                    
+                    // Add navigation links
+                    dropdown.innerHTML = `
+                        <a href="/" style="
+                            display: flex;
+                            align-items: center;
+                            padding: 12px;
+                            color: #00ff41;
+                            text-decoration: none;
+                            border: 1px solid #00ff41;
+                            border-radius: 4px;
+                            margin-bottom: 8px;
+                            font-size: 14px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
+                           onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
+                            <span style="color: #ff0080; margin-right: 8px;">●</span>
+                            LIVE_FEED
+                        </a>
+                        <a href="/archive" style="
+                            display: flex;
+                            align-items: center;
+                            padding: 12px;
+                            color: #00ff41;
+                            text-decoration: none;
+                            border: 1px solid #00ff41;
+                            border-radius: 4px;
+                            font-size: 14px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
+                           onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
+                            <span style="color: #0ff; margin-right: 8px;">▣</span>
+                            DATA_VAULT
+                        </a>
+                    `;
+                    
+                    // Add click handlers for navigation
+                    const links = dropdown.querySelectorAll('a');
+                    links.forEach(link => {
+                        link.addEventListener('click', function() {
+                            dropdown.remove();
+                            console.log('Navigating via dropdown');
+                        });
+                    });
+                    
+                    // Add to page
+                    document.body.appendChild(dropdown);
+                    console.log('Dropdown opened');
+                    
+                    // Close dropdown when clicking elsewhere
+                    setTimeout(() => {
+                        const closeDropdown = (event) => {
+                            if (!dropdown.contains(event.target) && !mobileButton.contains(event.target)) {
+                                dropdown.remove();
+                                document.removeEventListener('click', closeDropdown);
+                                console.log('Dropdown closed by outside click');
+                            }
+                        };
+                        document.addEventListener('click', closeDropdown);
+                    }, 100);
+                });
+            } else if (mobileButton && mobileButton.hasAttribute('data-nav-initialized')) {
+                console.log('Mobile button already initialized, skipping');
+                
+                console.log('Mobile navigation setup complete');
+            } else {
+                console.error('Mobile button not found!', {
+                    button: mobileButton
+                });
+            }
+        }
+        
+        // Try to initialize immediately and on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMobileNav);
+        } else {
+            initMobileNav();
+        }
+        
+        // Also try after a short delay for HTMX navigation
+        setTimeout(initMobileNav, 100);
+    }
 </script>
 {{end}}

@@ -328,6 +328,47 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Mobile navigation debug and styling */
+        #mobile-nav {
+            background: var(--bg-terminal);
+            border: 1px solid var(--cyber-green);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+        
+        /* Force visibility rules - more specific than Tailwind classes */
+        @media (max-width: 1023px) {
+            #mobile-nav.hidden {
+                display: none !important;
+            }
+            
+            #mobile-nav:not(.hidden) {
+                display: block !important;
+            }
+        }
+        
+        /* Hide on desktop */
+        @media (min-width: 1024px) {
+            #mobile-nav {
+                display: none !important;
+            }
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 1023px) {
+            .terminal-box {
+                padding: 1rem;
+            }
+            
+            .video-frame {
+                margin-bottom: 1rem;
+            }
+            
+            /* Better spacing for mobile controls */
+            .cyber-button {
+                min-height: 44px; /* Touch-friendly minimum size */
+            }
+        }
     </style>
     
 </head>
