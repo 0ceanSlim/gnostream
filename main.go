@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"gnostream/src/cli"
 	"gnostream/src/config"
 	"gnostream/src/rtmp"
 	"gnostream/src/stream"
@@ -17,6 +18,17 @@ import (
 )
 
 func main() {
+	// Check if this is a CLI command (anything other than server mode)
+	if len(os.Args) > 1 && os.Args[1] != "server" {
+		// Run CLI mode
+		cli := cli.NewCLI()
+		if err := cli.Run(); err != nil {
+			log.Fatalf("CLI error: %v", err)
+		}
+		return
+	}
+
+	// Default to server mode (or explicit "server" command)
 	log.Println("🎬 Starting Live Streaming Server...")
 
 	// Load configuration
