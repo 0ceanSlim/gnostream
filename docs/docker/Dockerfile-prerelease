@@ -1,7 +1,7 @@
 FROM alpine:latest
 
-# Install dependencies for downloading and extracting releases
-RUN apk add --no-cache ca-certificates curl jq unzip tar gzip wget
+# Install dependencies for downloading and extracting releases, plus ffmpeg for stream processing
+RUN apk add --no-cache ca-certificates curl jq unzip tar gzip wget ffmpeg
 
 WORKDIR /tmp
 
