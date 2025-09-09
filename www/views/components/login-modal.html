@@ -1,0 +1,294 @@
+{{define "login-modal"}}
+<!-- Authentication Modal Overlay -->
+<div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 hidden p-4" style="backdrop-filter: blur(5px);">
+    <div class="terminal-box bg-black border-2 border-green-400 rounded-md shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto" style="background: linear-gradient(135deg, #001100 0%, #000800 100%); box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center p-6 border-b border-green-400">
+            <h2 class="text-xl font-bold text-green-400 font-mono cyber-title">🔗 NOSTR_AUTH</h2>
+            <button id="close-auth-modal" class="text-green-400 hover:text-red-400 text-2xl leading-none transition-colors">&times;</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6">
+            <!-- Primary Authentication Options -->
+            <div id="auth-selection" class="space-y-4">
+                <h3 class="text-lg font-mono text-green-400 mb-4 uppercase tracking-wide">SELECT_AUTH_METHOD:</h3>
+                
+                <!-- Browser Extension -->
+                <button onclick="selectAuthMethod('extension')" 
+                        class="w-full p-4 cyber-button bg-transparent border-2 border-green-400 text-green-400 hover:bg-green-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                    <div class="flex items-center justify-center space-x-3">
+                        <span class="text-xl">🔗</span>
+                        <div class="text-left">
+                            <div class="font-bold">BROWSER_EXTENSION</div>
+                            <div class="text-xs opacity-80">Alby • nos2x • Flamingo</div>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Amber Signer -->
+                <button onclick="selectAuthMethod('amber')" 
+                        class="w-full p-4 cyber-button bg-transparent border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                    <div class="flex items-center justify-center space-x-3">
+                        <span class="text-xl">📱</span>
+                        <div class="text-left">
+                            <div class="font-bold">AMBER_SIGNER</div>
+                            <div class="text-xs opacity-80">Android • External signing</div>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Advanced Options Toggle -->
+                <button onclick="toggleAdvanced()" 
+                        class="w-full p-3 cyber-button bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                    <div class="flex items-center justify-center space-x-2">
+                        <span>⚙️</span>
+                        <span>ADVANCED_OPTIONS</span>
+                        <span id="advanced-arrow" class="transform transition-transform">▼</span>
+                    </div>
+                </button>
+
+                <!-- Advanced Authentication Options (Hidden by default) -->
+                <div id="advanced-options" class="hidden space-y-3 mt-4 pt-4 border-t border-green-400">
+                    <!-- Bunker -->
+                    <button onclick="selectAuthMethod('bunker')" 
+                            class="w-full p-3 cyber-button bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase opacity-70">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span class="text-xl">🏠</span>
+                            <div class="text-left">
+                                <div class="font-bold">BUNKER</div>
+                                <div class="text-xs opacity-80">🚧 WIP - Remote signing</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Read Only -->
+                    <button onclick="selectAuthMethod('readonly')" 
+                            class="w-full p-3 cyber-button bg-transparent border-2 border-gray-500 text-gray-300 hover:bg-gray-500 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span class="text-xl">👁️</span>
+                            <div class="text-left">
+                                <div class="font-bold">READ_ONLY</div>
+                                <div class="text-xs opacity-80">Browse without signing</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Private Key -->
+                    <button onclick="selectAuthMethod('privatekey')" 
+                            class="w-full p-3 cyber-button bg-transparent border-2 border-red-400 text-red-400 hover:bg-red-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span class="text-xl">🔐</span>
+                            <div class="text-left">
+                                <div class="font-bold">PRIVATE_KEY</div>
+                                <div class="text-xs opacity-80">⚠️ Advanced users only</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Authentication Forms (Initially Hidden) -->
+            
+            <!-- Extension Form -->
+            <div id="extension-form" class="hidden">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-green-400">🔗</div>
+                    <h3 class="text-lg font-bold text-green-400 mb-2 font-mono">BROWSER_EXTENSION</h3>
+                    <p class="text-gray-300 text-sm mb-6 font-mono">Connect using your Nostr browser extension</p>
+                    
+                    <button onclick="connectExtension()" 
+                            class="w-full cyber-button bg-transparent border-2 border-green-400 text-green-400 hover:bg-green-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                        Connect_Extension
+                    </button>
+                    
+                    <button onclick="resetModal()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 uppercase">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Amber Form -->
+            <div id="amber-form" class="hidden">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-cyan-400">📱</div>
+                    <h3 class="text-lg font-bold text-cyan-400 mb-2 font-mono">AMBER_SIGNER</h3>
+                    <p class="text-gray-300 text-sm mb-6 font-mono">Sign events using the Amber Android app</p>
+                    
+                    <button onclick="connectAmber()" 
+                            class="w-full cyber-button bg-transparent border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                        Connect_Amber
+                    </button>
+                    
+                    <button onclick="resetModal()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 uppercase">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bunker Form -->
+            <div id="bunker-form" class="hidden">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-green-400">🏠</div>
+                    <h3 class="text-lg font-bold text-green-400 mb-2 font-mono">BUNKER_CONNECTION</h3>
+                    <p class="text-gray-300 text-sm mb-4 font-mono">Connect to a remote signing bunker</p>
+                    
+                    <input type="text" id="bunker-url" placeholder="bunker://..."
+                           class="w-full bg-black border-2 border-green-400 rounded-md px-3 py-2 text-green-400 placeholder-gray-500 mb-4 focus:outline-none focus:border-cyan-400 font-mono">
+                    
+                    <button onclick="connectBunker()" 
+                            class="w-full cyber-button bg-transparent border-2 border-green-400 text-green-400 hover:bg-green-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                        Connect_Bunker
+                    </button>
+                    
+                    <button onclick="resetModal()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 uppercase">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Read Only Form -->
+            <div id="readonly-form" class="hidden">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-gray-400">👁️</div>
+                    <h3 class="text-lg font-bold text-gray-400 mb-2 font-mono">READ_ONLY_ACCESS</h3>
+                    <p class="text-gray-300 text-sm mb-4 font-mono">Browse content without signing events</p>
+                    
+                    <input type="text" id="readonly-pubkey" placeholder="npub... or hex (optional)"
+                           class="w-full bg-black border-2 border-gray-500 rounded-md px-3 py-2 text-gray-300 placeholder-gray-600 mb-4 focus:outline-none focus:border-cyan-400 font-mono">
+                    
+                    <button onclick="connectReadOnly()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-500 text-gray-300 hover:bg-gray-500 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                        Enter_Read_Only
+                    </button>
+                    
+                    <button onclick="resetModal()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 uppercase">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Private Key Form -->
+            <div id="privatekey-form" class="hidden">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-red-400">🔐</div>
+                    <h3 class="text-lg font-bold text-red-400 mb-2 font-mono">PRIVATE_KEY</h3>
+                    
+                    <div class="bg-black border-2 border-red-400 rounded-md p-3 mb-4">
+                        <p class="text-red-300 text-xs font-mono">
+                            ⚠️ <strong>SECURITY_WARNING:</strong> Only enter your private key on trusted devices. 
+                            Consider using a browser extension instead.
+                        </p>
+                    </div>
+                    
+                    <input type="password" id="private-key" placeholder="nsec... or hex private key"
+                           class="w-full bg-black border-2 border-red-400 rounded-md px-3 py-2 text-red-400 placeholder-gray-600 mb-4 focus:outline-none focus:border-cyan-400 font-mono">
+                    
+                    <button onclick="connectPrivateKey()" 
+                            class="w-full cyber-button bg-transparent border-2 border-red-400 text-red-400 hover:bg-red-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                        Connect_with_Private_Key
+                    </button>
+                    
+                    <button onclick="resetModal()" 
+                            class="w-full cyber-button bg-transparent border-2 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 uppercase">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Messages -->
+            <div id="auth-status" class="hidden mt-4 p-3 rounded-md border-2 bg-black font-mono">
+                <div class="flex items-center">
+                    <span id="status-icon" class="mr-2"></span>
+                    <span id="status-message" class="text-sm"></span>
+                </div>
+            </div>
+
+            <!-- Key Generation Section -->
+            <div class="mt-6 pt-4 border-t border-green-400">
+                <button onclick="generateKeys()" 
+                        class="w-full cyber-button bg-transparent border-2 border-purple-400 text-purple-400 hover:bg-purple-400 hover:text-black font-mono py-2 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                    🎲 Generate_New_Keys
+                </button>
+                
+                <div id="generated-keys" class="hidden mt-3 p-3 bg-black border-2 border-purple-400 rounded-md">
+                    <div class="text-xs text-gray-300 mb-2">
+                        <div class="font-bold text-purple-400 font-mono">PRIVATE_KEY_(nsec):</div>
+                        <div class="bg-black border border-gray-600 p-2 rounded-md mt-1 break-all font-mono text-green-400" id="gen-nsec"></div>
+                    </div>
+                    <div class="text-xs text-gray-300">
+                        <div class="font-bold text-purple-400 font-mono">PUBLIC_KEY_(npub):</div>
+                        <div class="bg-black border border-gray-600 p-2 rounded-md mt-1 break-all font-mono text-green-400" id="gen-npub"></div>
+                    </div>
+                    <div class="text-xs text-yellow-400 mt-2 font-mono">
+                        ⚠️ SAVE_THESE_KEYS_SECURELY! THEY_CANNOT_BE_RECOVERED.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Ensure modal is properly sized and scrollable */
+#auth-modal {
+    overflow: auto;
+}
+
+#auth-modal > div {
+    margin: auto;
+}
+
+/* Smooth transitions for form switching */
+.hidden {
+    display: none !important;
+}
+
+/* Button hover effects */
+button {
+    transition: all 0.3s ease;
+}
+
+/* Input focus states */
+input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Status message styling */
+.status-success {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
+.status-error {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.status-loading {
+    border-color: #06b6d4;
+    color: #06b6d4;
+}
+
+/* Cyber button styling */
+.cyber-button {
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.cyber-button:hover {
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+}
+
+/* Terminal styling */
+.cyber-title {
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.7);
+}
+</style>
+{{end}}

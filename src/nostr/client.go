@@ -78,18 +78,38 @@ func DerivePublicKey(privateKeyHex string) (string, error) {
 	return publicKeyHex, nil
 }
 
-// Client handles Nostr relay communication
-type Client struct {
+// Client interface for Nostr operations
+type Client interface {
+	BroadcastStartEvent(metadata *config.StreamMetadata)
+	BroadcastStartEventWithResponse(metadata *config.StreamMetadata) (string, []string)
+	BroadcastUpdateEvent(metadata *config.StreamMetadata)
+	BroadcastUpdateEventWithResponse(metadata *config.StreamMetadata) (string, []string)
+	BroadcastEndEvent(metadata *config.StreamMetadata)
+	BroadcastEndEventWithResponse(metadata *config.StreamMetadata) (string, []string)
+	BroadcastCancelEvent(dtag string)
+	BroadcastDeletionEvent(eventID string, reason string)
+	BroadcastDeletionEventWithResponse(eventID string, reason string) (string, []string)
+	Close() error
+}
+
+// LegacyClient handles Nostr relay communication (legacy implementation)
+type LegacyClient struct {
 	privateKey *btcec.PrivateKey
 	publicKey  string
 	relays     []string
 }
 
-// NewClient creates a new Nostr client
-func NewClient(cfg *config.NostrRelayConfig) (*Client, error) {
+// NewClient creates a new Nostr client (now uses Grain by default)
+func NewClient(cfg *config.NostrRelayConfig) (Client, error) {
+	// Use Grain client by default
+	return NewGrainClient(cfg)
+}
+
+// NewLegacyClient creates a legacy Nostr client
+func NewLegacyClient(cfg *config.NostrRelayConfig) (*LegacyClient, error) {
 	// Check for placeholder values
 	if cfg.PrivateKey == "your-nostr-private-key-nsec" || cfg.PrivateKey == "" {
-		return &Client{
+		return &LegacyClient{
 			privateKey: nil,
 			publicKey:  "",
 			relays:     cfg.Relays,
@@ -122,7 +142,7 @@ func NewClient(cfg *config.NostrRelayConfig) (*Client, error) {
 	log.Printf("🔑 Nostr keys initialized successfully")
 	log.Printf("🔑 Public key: %s", publicKeyHex)
 
-	return &Client{
+	return &LegacyClient{
 		privateKey: privateKey,
 		publicKey:  publicKeyHex,
 		relays:     cfg.Relays,
@@ -130,7 +150,7 @@ func NewClient(cfg *config.NostrRelayConfig) (*Client, error) {
 }
 
 // BroadcastStartEvent broadcasts a stream start event
-func (c *Client) BroadcastStartEvent(metadata *config.StreamMetadata) {
+func (c *LegacyClient) BroadcastStartEvent(metadata *config.StreamMetadata) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return
@@ -167,7 +187,7 @@ func (c *Client) BroadcastStartEvent(metadata *config.StreamMetadata) {
 }
 
 // BroadcastStartEventWithResponse broadcasts a stream start event and returns event info
-func (c *Client) BroadcastStartEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
+func (c *LegacyClient) BroadcastStartEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return "", []string{}
@@ -208,7 +228,7 @@ func (c *Client) BroadcastStartEventWithResponse(metadata *config.StreamMetadata
 }
 
 // BroadcastUpdateEvent broadcasts a stream metadata update
-func (c *Client) BroadcastUpdateEvent(metadata *config.StreamMetadata) {
+func (c *LegacyClient) BroadcastUpdateEvent(metadata *config.StreamMetadata) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return
@@ -249,7 +269,7 @@ func (c *Client) BroadcastUpdateEvent(metadata *config.StreamMetadata) {
 }
 
 // BroadcastUpdateEventWithResponse broadcasts a stream metadata update and returns event info
-func (c *Client) BroadcastUpdateEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
+func (c *LegacyClient) BroadcastUpdateEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return "", []string{}
@@ -294,7 +314,7 @@ func (c *Client) BroadcastUpdateEventWithResponse(metadata *config.StreamMetadat
 }
 
 // BroadcastEndEvent broadcasts a stream end event
-func (c *Client) BroadcastEndEvent(metadata *config.StreamMetadata) {
+func (c *LegacyClient) BroadcastEndEvent(metadata *config.StreamMetadata) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return
@@ -332,7 +352,7 @@ func (c *Client) BroadcastEndEvent(metadata *config.StreamMetadata) {
 }
 
 // BroadcastEndEventWithResponse broadcasts a stream end event and returns event info
-func (c *Client) BroadcastEndEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
+func (c *LegacyClient) BroadcastEndEventWithResponse(metadata *config.StreamMetadata) (string, []string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return "", []string{}
@@ -374,7 +394,7 @@ func (c *Client) BroadcastEndEventWithResponse(metadata *config.StreamMetadata) 
 }
 
 // BroadcastCancelEvent broadcasts an event to cancel/end an incorrect stream event
-func (c *Client) BroadcastCancelEvent(dtag string) {
+func (c *LegacyClient) BroadcastCancelEvent(dtag string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return
@@ -398,7 +418,7 @@ func (c *Client) BroadcastCancelEvent(dtag string) {
 }
 
 // BroadcastDeletionEvent broadcasts a NIP-09 deletion request event
-func (c *Client) BroadcastDeletionEvent(eventID string, reason string) {
+func (c *LegacyClient) BroadcastDeletionEvent(eventID string, reason string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return
@@ -427,7 +447,7 @@ func (c *Client) BroadcastDeletionEvent(eventID string, reason string) {
 }
 
 // BroadcastDeletionEventWithResponse broadcasts a NIP-09 deletion request and returns event info
-func (c *Client) BroadcastDeletionEventWithResponse(eventID string, reason string) (string, []string) {
+func (c *LegacyClient) BroadcastDeletionEventWithResponse(eventID string, reason string) (string, []string) {
 	if c.privateKey == nil {
 		log.Println("⚠️ Nostr broadcasting disabled - keys not configured")
 		return "", []string{}
@@ -479,7 +499,7 @@ func ExtractEventID(eventJSON string) (string, error) {
 }
 
 // createEvent creates and signs a Nostr event
-func (c *Client) createEvent(kind int, content string, tags [][]string) (*Event, error) {
+func (c *LegacyClient) createEvent(kind int, content string, tags [][]string) (*Event, error) {
 	event := Event{
 		PubKey:    c.publicKey,
 		CreatedAt: time.Now().Unix(),
@@ -526,7 +546,7 @@ func (c *Client) createEvent(kind int, content string, tags [][]string) (*Event,
 }
 
 // publishEvent publishes an event to all configured relays and returns successful relay URLs
-func (c *Client) publishEvent(event *Event) []string {
+func (c *LegacyClient) publishEvent(event *Event) []string {
 	if len(c.relays) == 0 {
 		log.Println("⚠️ No Nostr relays configured")
 		return []string{}
@@ -561,7 +581,7 @@ func (c *Client) publishEvent(event *Event) []string {
 }
 
 // publishToRelay publishes an event to a specific relay and returns success status
-func (c *Client) publishToRelay(event *Event, relayURL string) (bool, error) {
+func (c *LegacyClient) publishToRelay(event *Event, relayURL string) (bool, error) {
 	// Parse URL
 	u, err := url.Parse(relayURL)
 	if err != nil {
@@ -619,4 +639,10 @@ func (c *Client) publishToRelay(event *Event, relayURL string) (bool, error) {
 	}
 
 	return false, nil // Not a successful OK response
+}
+
+// Close closes the legacy client (no-op for compatibility)
+func (c *LegacyClient) Close() error {
+	// Legacy client doesn't maintain persistent connections
+	return nil
 }

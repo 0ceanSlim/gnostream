@@ -13,7 +13,7 @@ import (
 // EventsCommand handles Nostr event management
 type EventsCommand struct {
 	config      *config.Config
-	nostrClient *nostr.Client
+	nostrClient nostr.Client
 }
 
 // NewEventsCommand creates a new events command

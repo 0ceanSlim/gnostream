@@ -11,6 +11,7 @@ import (
 	"gnostream/src/analytics"
 	"gnostream/src/config"
 	"gnostream/src/stream"
+	"gnostream/src/web/api"
 )
 
 // Server represents the web server
@@ -19,6 +20,7 @@ type Server struct {
 	monitor       *stream.Monitor
 	templates     *template.Template
 	viewerTracker *analytics.ViewerTracker
+	authAPI       *api.AuthAPI
 }
 
 // NewServer creates a new web server instance
@@ -27,6 +29,7 @@ func NewServer(cfg *config.Config, monitor *stream.Monitor) *Server {
 		config:        cfg,
 		monitor:       monitor,
 		viewerTracker: analytics.NewViewerTracker(),
+		authAPI:       api.NewAuthAPI(cfg),
 	}
 
 	// Load templates
@@ -53,6 +56,13 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/stream-data", s.corsWrapper(s.handleStreamData))
 	mux.HandleFunc("/api/health", s.corsWrapper(s.handleHealth))
 	mux.HandleFunc("/api/viewers", s.corsWrapper(s.handleViewerMetrics))
+	
+	// Authentication API endpoints
+	mux.HandleFunc("/api/auth/login", s.corsWrapper(s.authAPI.HandleLogin))
+	mux.HandleFunc("/api/auth/logout", s.corsWrapper(s.authAPI.HandleLogout))
+	mux.HandleFunc("/api/auth/session", s.corsWrapper(s.authAPI.HandleSession))
+	mux.HandleFunc("/api/auth/generate-keys", s.corsWrapper(s.authAPI.HandleGenerateKeys))
+	mux.HandleFunc("/api/auth/connect-relay", s.corsWrapper(s.authAPI.HandleConnectRelay))
 
 
 	// Web pages with HTMX routing (with CORS)

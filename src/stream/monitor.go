@@ -21,7 +21,7 @@ type Monitor struct {
 	config       *config.Config
 	streamConfig *config.StreamDefaults
 	metadata     *config.StreamMetadata
-	nostrClient  *nostr.Client
+	nostrClient  nostr.Client
 	ffmpegCmd    *exec.Cmd
 	mutex        sync.RWMutex
 	isActive     bool

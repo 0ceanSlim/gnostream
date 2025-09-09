@@ -14,7 +14,7 @@ import (
 // CleanupCommand handles cleanup operations
 type CleanupCommand struct {
 	config      *config.Config
-	nostrClient *nostr.Client
+	nostrClient nostr.Client
 }
 
 // NewCleanupCommand creates a new cleanup command

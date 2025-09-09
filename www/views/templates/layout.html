@@ -390,6 +390,9 @@
         {{template "footer" .}}
     </div>
 
+    <!-- Login Modal -->
+    {{template "login-modal"}}
+
     <script>
         // Prevent redeclaration on HTMX navigation
         window.matrixRainInterval = window.matrixRainInterval || null;
@@ -440,6 +443,7 @@
     </script>
 
     <!-- Load application JavaScript files after DOM is ready -->
+    <script src="/res/js/auth.js"></script>
     <script src="/res/js/stream.js"></script>
     <script src="/res/js/archive.js"></script>
 </body>

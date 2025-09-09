@@ -1,42 +1,42 @@
 {{define "header"}}
 <header class="terminal-box rounded-md p-4 lg:p-6 mb-8 relative">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-2 lg:gap-4">
         <!-- Logo -->
         {{template "app-name"}}
         
         <!-- Desktop Navigation & Mobile Menu Button -->
-        <div class="flex items-center">
+        <div class="flex items-center space-x-2 lg:space-x-4 flex-shrink-0">
             <!-- Desktop Navigation -->
-            <nav class="hidden lg:flex">
-                <ul class="flex space-x-8">
-                    <li>
-                        <a href="/"
-                           hx-get="/"
-                           hx-push-url="/"
-                           hx-target="#main-content"
-                           hx-swap="innerHTML"
-                           class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
-                            <span class="text-red-400 mr-2">●</span>
-                            LIVE_FEED
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/archive"
-                           hx-get="/archive"
-                           hx-push-url="/archive"
-                           hx-target="#main-content"
-                           hx-swap="innerHTML"
-                           class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
-                            <span class="text-blue-400 mr-2">▣</span>
-                            DATA_VAULT
-                        </a>
-                    </li>
-                </ul>
+            <nav id="desktop-nav" class="flex items-center space-x-4 max-lg:hidden">
+                <a href="/"
+                   hx-get="/"
+                   hx-push-url="/"
+                   hx-target="#main-content"
+                   hx-swap="innerHTML"
+                   class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                    <span class="text-red-400 mr-2">●</span>
+                    LIVE_FEED
+                </a>
+                <a href="/archive"
+                   hx-get="/archive"
+                   hx-push-url="/archive"
+                   hx-target="#main-content"
+                   hx-swap="innerHTML"
+                   class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center">
+                    <span class="text-blue-400 mr-2">▣</span>
+                    DATA_VAULT
+                </a>
             </nav>
             
+            <!-- Login Button (Desktop Only) -->
+            <button id="login-btn" class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center max-lg:hidden">
+                <span class="text-cyan-400 mr-2">🔑</span>
+                LOGIN
+            </button>
+            
             <!-- Mobile Menu Button -->
-            <button id="mobile-menu-button" class="lg:hidden p-3 cyber-button text-sm">
-                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button id="mobile-menu-button" class="lg:hidden p-2 cyber-button text-sm">
+                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
                 </svg>
             </button>
@@ -52,6 +52,7 @@
 </header>
 
 <script>
+
     // Initialize mobile navigation - prevent duplicate setup
     if (!window.mobileNavInitialized) {
         window.mobileNavInitialized = true;
@@ -97,20 +98,21 @@
                     
                     // Style the dropdown
                     dropdown.style.cssText = `
-                        position: absolute;
-                        top: ${buttonRect.bottom + window.scrollY + 5}px;
-                        right: ${window.innerWidth - buttonRect.right}px;
+                        position: fixed;
+                        top: ${buttonRect.bottom + 5}px;
+                        right: 16px;
                         background: #001100;
                         border: 2px solid #00ff41;
                         border-radius: 8px;
-                        padding: 10px;
-                        min-width: 200px;
+                        padding: 16px;
+                        min-width: 220px;
                         z-index: 1000;
                         box-shadow: 0 4px 20px rgba(0, 255, 65, 0.3);
                         font-family: 'Share Tech Mono', monospace;
+                        max-width: calc(100vw - 32px);
                     `;
                     
-                    // Add navigation links
+                    // Add navigation links including login
                     dropdown.innerHTML = `
                         <a href="/" style="
                             display: flex;
@@ -127,7 +129,7 @@
                             transition: all 0.3s ease;
                         " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
                            onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
-                            <span style="color: #ff0080; margin-right: 8px;">●</span>
+                            <span style="color: #ff4444; margin-right: 8px;">●</span>
                             LIVE_FEED
                         </a>
                         <a href="/archive" style="
@@ -138,15 +140,36 @@
                             text-decoration: none;
                             border: 1px solid #00ff41;
                             border-radius: 4px;
+                            margin-bottom: 8px;
                             font-size: 14px;
                             text-transform: uppercase;
                             letter-spacing: 1px;
                             transition: all 0.3s ease;
                         " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
                            onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
-                            <span style="color: #0ff; margin-right: 8px;">▣</span>
+                            <span style="color: #44aaff; margin-right: 8px;">▣</span>
                             DATA_VAULT
                         </a>
+                        <button id="mobile-login-btn" style="
+                            display: flex;
+                            align-items: center;
+                            padding: 12px;
+                            color: #00ff41;
+                            background: transparent;
+                            border: 1px solid #00ff41;
+                            border-radius: 4px;
+                            font-size: 14px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            transition: all 0.3s ease;
+                            width: 100%;
+                            cursor: pointer;
+                            font-family: inherit;
+                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
+                           onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
+                            <span style="color: #44ffff; margin-right: 8px;">🔑</span>
+                            LOGIN
+                        </button>
                     `;
                     
                     // Add click handlers for navigation
@@ -157,6 +180,24 @@
                             console.log('Navigating via dropdown');
                         });
                     });
+                    
+                    // Add click handler for mobile login button
+                    const mobileLoginBtn = dropdown.querySelector('#mobile-login-btn');
+                    if (mobileLoginBtn) {
+                        mobileLoginBtn.addEventListener('click', function() {
+                            dropdown.remove();
+                            // Trigger the login modal
+                            if (window.gnostreamAuth && window.gnostreamAuth.showModal) {
+                                window.gnostreamAuth.showModal();
+                            } else {
+                                // Fallback if auth system not loaded yet
+                                const loginBtn = document.getElementById('login-btn');
+                                if (loginBtn) {
+                                    loginBtn.click();
+                                }
+                            }
+                        });
+                    }
                     
                     // Add to page
                     document.body.appendChild(dropdown);
@@ -196,4 +237,20 @@
         setTimeout(initMobileNav, 100);
     }
 </script>
+
+<style>
+.cyber-button {
+    background: transparent;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.cyber-button:hover:not(:disabled) {
+    background-color: #00ff41;
+    color: black;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+}
+</style>
 {{end}}
