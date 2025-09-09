@@ -24,6 +24,11 @@ type Server struct {
 	onStreamStop  func(streamKey string)
 	ctx           context.Context
 	cancel        context.CancelFunc
+	
+	// Track current settings to detect changes
+	currentHLSConfig     *config.HLSConfig
+	currentRecordSetting bool
+	configMutex          sync.RWMutex
 }
 
 // StreamContext holds information about an active stream
@@ -54,8 +59,19 @@ func (s *Server) Start(ctx context.Context) error {
 	rtmpDefaults := s.config.GetRTMPDefaults()
 	log.Printf("🎬 RTMP server (FFmpeg-based) starting on port %d", rtmpDefaults.Port)
 
+	// Initialize current settings
+	s.configMutex.Lock()
+	s.currentHLSConfig = s.config.GetHLSConfig()
+	if s.config.StreamInfo != nil {
+		s.currentRecordSetting = s.config.StreamInfo.Record
+	}
+	s.configMutex.Unlock()
+
 	// Start FFmpeg RTMP server immediately to listen for connections
 	go s.startRTMPToHLSConversion("default")
+
+	// Start config watcher
+	go s.watchForConfigChanges()
 
 	// Wait for context cancellation
 	<-s.ctx.Done()
@@ -317,4 +333,81 @@ func (s *Server) IsStreamActive(streamKey string) bool {
 	defer s.mutex.RUnlock()
 	_, exists := s.activeStreams[streamKey]
 	return exists
+}
+
+// watchForConfigChanges monitors stream-info.yml for changes and restarts FFmpeg when HLS/record settings change
+func (s *Server) watchForConfigChanges() {
+	ticker := time.NewTicker(3 * time.Second) // Check every 3 seconds like the stream monitor
+	defer ticker.Stop()
+
+	log.Println("👁️ RTMP config watcher started")
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			log.Println("📁 RTMP config watcher stopping...")
+			return
+		case <-ticker.C:
+			if err := s.checkConfigChanges(); err != nil {
+				log.Printf("RTMP config check error: %v", err)
+			}
+		}
+	}
+}
+
+// checkConfigChanges checks for HLS/recording setting changes and restarts FFmpeg if needed
+func (s *Server) checkConfigChanges() error {
+	// Reload config
+	_, changed, err := s.config.CheckAndReloadStreamInfo()
+	if err != nil {
+		return err
+	}
+
+	if !changed {
+		return nil // No changes detected
+	}
+
+	// Get new settings
+	newHLSConfig := s.config.GetHLSConfig()
+	newRecordSetting := false
+	if s.config.StreamInfo != nil {
+		newRecordSetting = s.config.StreamInfo.Record
+	}
+
+	// Compare with current settings
+	s.configMutex.RLock()
+	hlsChanged := s.currentHLSConfig == nil || 
+		s.currentHLSConfig.SegmentTime != newHLSConfig.SegmentTime ||
+		s.currentHLSConfig.PlaylistSize != newHLSConfig.PlaylistSize
+	recordChanged := s.currentRecordSetting != newRecordSetting
+	s.configMutex.RUnlock()
+
+	// If HLS or recording settings changed, restart FFmpeg
+	if hlsChanged || recordChanged {
+		log.Printf("🔄 HLS/Recording settings changed - restarting RTMP server...")
+		log.Printf("   HLS: %ds segments, %d playlist size, Record: %t", 
+			newHLSConfig.SegmentTime, newHLSConfig.PlaylistSize, newRecordSetting)
+
+		// Update stored settings
+		s.configMutex.Lock()
+		s.currentHLSConfig = newHLSConfig
+		s.currentRecordSetting = newRecordSetting
+		s.configMutex.Unlock()
+
+		// Restart all active streams with new settings
+		s.mutex.Lock()
+		for streamKey, stream := range s.activeStreams {
+			log.Printf("🔄 Restarting FFmpeg for stream: %s", streamKey)
+			s.stopStreamProcessing(streamKey, stream)
+		}
+		s.mutex.Unlock()
+
+		// Start a new RTMP server after brief delay
+		go func() {
+			time.Sleep(2 * time.Second)
+			s.startRTMPToHLSConversion("default")
+		}()
+	}
+
+	return nil
 }
