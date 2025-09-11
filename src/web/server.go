@@ -111,10 +111,13 @@ func (s *Server) hlsTrackingHandler(next http.Handler) http.Handler {
 		// Track HLS requests
 		if analytics.IsHLSRequest(r) {
 			s.viewerTracker.TrackRequest(r)
-			log.Printf("📊 HLS Request: %s from %s (Active viewers: %d)", 
-				r.URL.Path, 
-				s.getClientIP(r),
-				s.viewerTracker.GetActiveViewerCount())
+			// Only log playlist requests (.m3u8), not individual segments (.ts)
+			if strings.HasSuffix(r.URL.Path, ".m3u8") {
+				log.Printf("📊 HLS Request: %s from %s (Active viewers: %d)", 
+					r.URL.Path, 
+					s.getClientIP(r),
+					s.viewerTracker.GetActiveViewerCount())
+			}
 		}
 		
 		next.ServeHTTP(w, r)
