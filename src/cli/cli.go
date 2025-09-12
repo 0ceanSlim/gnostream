@@ -9,6 +9,13 @@ import (
 	"gnostream/src/config"
 )
 
+// Version information set at build time
+var (
+	Version   = "v0.0.0-dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
 // CLI represents the command line interface
 type CLI struct {
 	config *config.Config
@@ -143,8 +150,10 @@ func (cli *CLI) runCleanup() error {
 
 // runVersion shows version information
 func (cli *CLI) runVersion() error {
-	fmt.Println("gnostream v0.1.1-beta")
+	fmt.Printf("gnostream %s\n", Version)
 	fmt.Println("A decentralized live streaming solution")
+	fmt.Printf("Built: %s\n", BuildTime)
+	fmt.Printf("Commit: %s\n", GitCommit)
 	return nil
 }
 

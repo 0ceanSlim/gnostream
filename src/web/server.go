@@ -44,6 +44,8 @@ func (s *Server) Router() http.Handler {
 
 	// Static files - using /res/ prefix to match your structure (with CORS)
 	mux.Handle("/res/", http.StripPrefix("/res/", s.corsHandler(http.FileServer(http.Dir("www/res/")))))
+	// CSS styles - for compiled Tailwind CSS with proper MIME type
+	mux.Handle("/style/", http.StripPrefix("/style/", s.cssHandler(http.FileServer(http.Dir("www/style/")))))
 
 	// Get stream defaults
 	streamDefaults := s.config.GetStreamDefaults()
@@ -71,6 +73,17 @@ func (s *Server) Router() http.Handler {
 	
 
 	return mux
+}
+
+// cssHandler ensures CSS files are served with correct MIME type
+func (s *Server) cssHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set correct MIME type for CSS files
+		if strings.HasSuffix(r.URL.Path, ".css") {
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // corsHandler adds CORS headers for streaming files
