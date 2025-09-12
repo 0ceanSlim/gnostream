@@ -61,6 +61,11 @@ function selectAuthMethod(method) {
     // Show specific form
     const form = document.getElementById(`${method}-form`);
     if (form) form.classList.remove('hidden');
+    
+    // Special handling for extension
+    if (method === 'extension') {
+        checkForExtension();
+    }
 }
 
 function toggleAdvanced() {
@@ -102,6 +107,22 @@ function showStatus(message, type = 'loading') {
 function hideStatus() {
     const statusDiv = document.getElementById('auth-status');
     if (statusDiv) statusDiv.classList.add('hidden');
+}
+
+// Extension detection
+function checkForExtension() {
+    const statusEl = document.getElementById("extension-status");
+    const connectBtn = document.getElementById("connect-extension-btn");
+
+    if (window.nostr) {
+        statusEl.innerHTML = '<div class="text-green-300">✅ Nostr extension detected!</div>';
+        statusEl.className = "p-3 mb-4 bg-green-800 border border-green-600 rounded-lg";
+        connectBtn.disabled = false;
+    } else {
+        statusEl.innerHTML = '<div class="text-red-300">❌ No extension found.</div>';
+        statusEl.className = "p-3 mb-4 bg-red-800 border border-red-600 rounded-lg";
+        connectBtn.disabled = true;
+    }
 }
 
 // Authentication methods
@@ -476,21 +497,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Debug extension availability
     console.log('🔑 Gnostream auth system initialized');
-    console.log('Extension check on page load:', {
-        nostr: !!window.nostr,
-        alby: !!window.alby,
-        nos2x: !!window.nos2x,
-        userAgent: navigator.userAgent
-    });
-    
-    // Check again after a delay to see if extensions load later
-    setTimeout(() => {
-        console.log('Extension check after 2 seconds:', {
-            nostr: !!window.nostr,
-            alby: !!window.alby,
-            nos2x: !!window.nos2x
-        });
-    }, 2000);
 });
 
 // Export for modules

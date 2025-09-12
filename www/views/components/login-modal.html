@@ -95,10 +95,15 @@
                 <div class="text-center">
                     <div class="text-2xl mb-4 text-green-400">🔗</div>
                     <h3 class="text-lg font-bold text-green-400 mb-2 font-mono">BROWSER_EXTENSION</h3>
-                    <p class="text-gray-300 text-sm mb-6 font-mono">Connect using your Nostr browser extension</p>
+                    <p class="text-gray-300 text-sm mb-4 font-mono">Connect using your Nostr browser extension</p>
                     
-                    <button onclick="connectExtension()" 
-                            class="w-full cyber-button bg-transparent border-2 border-green-400 text-green-400 hover:bg-green-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
+                    <!-- Extension Status -->
+                    <div id="extension-status" class="p-3 mb-4 bg-gray-800 border border-gray-600 rounded-lg">
+                        <div class="text-gray-300">🔍 Checking for extension...</div>
+                    </div>
+                    
+                    <button id="connect-extension-btn" onclick="connectExtension()" disabled
+                            class="w-full cyber-button bg-transparent border-2 border-green-400 text-green-400 hover:bg-green-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase disabled:opacity-50 disabled:cursor-not-allowed">
                         Connect_Extension
                     </button>
                     
