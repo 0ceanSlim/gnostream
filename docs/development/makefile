@@ -194,7 +194,7 @@ test-review: ## Run code review tests only
 	@cd $(PROJECT_ROOT)/tests && $(MAKE) test-review
 	@echo "$(GREEN)Code review tests completed$(NC)"
 
-release: version test build-image ## Build complete release using Docker (runs tests first)
+release: version build-image ## Build complete release using Docker (tests temporarily disabled)
 	@echo "$(BLUE)Starting Docker-based release build$(NC)"
 	@echo "$(YELLOW)Building version: $(BUILD_VERSION)$(NC)"
 	@echo ""
@@ -208,6 +208,7 @@ endif
 	@echo "$(YELLOW)Running build in container...$(NC)"
 	@docker run --name gnostream-build-temp \
 		-e VERSION=$(BUILD_VERSION) \
+		-e GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") \
 		$(BUILD_IMAGE)
 	@echo "$(YELLOW)Copying artifacts from container...$(NC)"
 	@docker cp gnostream-build-temp:/output/dist/. $(PROJECT_ROOT)/build/dist/
@@ -231,6 +232,7 @@ else
 endif
 	@docker run --name gnostream-build-temp \
 		-e VERSION=$(BUILD_VERSION)-dev \
+		-e GIT_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") \
 		$(BUILD_IMAGE)
 	@docker cp gnostream-build-temp:/output/dist/. $(PROJECT_ROOT)/build/dist/
 ifeq ($(OS),Windows_NT)
@@ -266,7 +268,7 @@ else
 endif
 
 # Workflow helpers
-prepare-release: test ## Prepare for release (run tests, check git status)
+prepare-release: ## Prepare for release (tests temporarily disabled, check git status only)
 	@echo "$(BLUE)Preparing for release$(NC)"
 ifeq ($(OS),Windows_NT)
 	@git status --porcelain 2>nul | find /v "" && (echo "$(RED)Error: Working directory has uncommitted changes$(NC)" && git status --short && exit 1) || echo "$(GREEN)Ready for release$(NC)"

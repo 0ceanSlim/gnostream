@@ -3,8 +3,9 @@
 # Excludes large streaming archives and unnecessary files from Docker build context
 
 # Streaming archives (large .ts video files) - CRITICAL FOR BUILD PERFORMANCE
-www/live/archive/
+www/live/
 *.ts
+*.m3u8
 
 # Build outputs
 build/

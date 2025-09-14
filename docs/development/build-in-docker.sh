@@ -7,33 +7,11 @@ set -e
 # Configuration
 APP_NAME="gnostream"
 BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-# Version Management (matches Grain's approach)
-if [ -n "$VERSION" ]; then
-    BUILD_VERSION="$VERSION"
-else
-    # Check if we're exactly on a tag
-    GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
-    if [ -n "$GIT_TAG" ]; then
-        BUILD_VERSION="$GIT_TAG"
-    else
-        # Get the latest tag
-        GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        if [ -n "$GIT_VERSION" ]; then
-            GIT_COMMITS=$(git rev-list "${GIT_VERSION}..HEAD" --count 2>/dev/null || echo "0")
-            if [ "$GIT_COMMITS" != "0" ]; then
-                BUILD_VERSION="${GIT_VERSION}-dev.${GIT_COMMITS}"
-            else
-                BUILD_VERSION="$GIT_VERSION"
-            fi
-        else
-            BUILD_VERSION="v0.0.0-dev"
-        fi
-    fi
-fi
-
-VERSION="$BUILD_VERSION"
+# Use version and git commit passed from host (via Makefile)
+# Fallback to defaults if not provided
+VERSION="${VERSION:-v0.0.0-dev}"
+GIT_COMMIT="${GIT_COMMIT:-unknown}"
 
 # Build flags
 LDFLAGS="-w -s -X gnostream/src/cli.Version=${VERSION} -X gnostream/src/cli.BuildTime=${BUILD_TIME} -X gnostream/src/cli.GitCommit=${GIT_COMMIT}"
