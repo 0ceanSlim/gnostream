@@ -13,9 +13,9 @@ RUN ARCH=$(uname -m) && \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac && \
     echo "Detected architecture: $ARCH -> gnostream-linux-$GNOSTREAM_ARCH" && \
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/yourusername/gnostream/releases/latest | jq -r .tag_name) && \
+    LATEST_RELEASE=$(curl -s https://api.github.com/repos/0ceanslim/gnostream/releases/latest | jq -r .tag_name) && \
     echo "Downloading GNOSTREAM version: $LATEST_RELEASE for linux-$GNOSTREAM_ARCH" && \
-    DOWNLOAD_URL="https://github.com/yourusername/gnostream/releases/download/$LATEST_RELEASE/gnostream-linux-$GNOSTREAM_ARCH.tar.gz" && \
+    DOWNLOAD_URL="https://github.com/0ceanslim/gnostream/releases/download/$LATEST_RELEASE/gnostream-linux-$GNOSTREAM_ARCH.tar.gz" && \
     curl -L "$DOWNLOAD_URL" -o gnostream-release.tar.gz && \
     echo "Extracting release..." && \
     tar -xzf gnostream-release.tar.gz && \
