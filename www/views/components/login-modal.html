@@ -10,18 +10,6 @@
 
         <!-- Modal Body -->
         <div class="p-6">
-            <!-- Development Notice -->
-            <div class="bg-yellow-900 border-2 border-yellow-400 rounded-md p-4 mb-6">
-                <div class="flex items-center space-x-3">
-                    <span class="text-2xl">🚧</span>
-                    <div class="text-yellow-400 font-mono">
-                        <div class="font-bold text-lg uppercase">WORK_IN_PROGRESS</div>
-                        <div class="text-sm opacity-90">Login with Nostr and chat features coming soon!</div>
-                        <div class="text-xs mt-1 opacity-75">This interface doesn't work yet - enjoy the stream for now</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Primary Authentication Options -->
             <div id="auth-selection" class="space-y-4">
                 <h3 class="text-lg font-mono text-green-400 mb-4 uppercase tracking-wide">SELECT_AUTH_METHOD:</h3>
@@ -62,8 +50,20 @@
 
                 <!-- Advanced Authentication Options (Hidden by default) -->
                 <div id="advanced-options" class="hidden space-y-3 mt-4 pt-4 border-t border-green-400">
-                    <!-- Bunker -->
-                    <button onclick="selectAuthMethod('bunker')" 
+                    <!-- Private Key (moved to top) -->
+                    <button onclick="selectAuthMethod('privatekey')"
+                            class="w-full p-3 cyber-button bg-transparent border-2 border-red-400 text-red-400 hover:bg-red-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span class="text-xl">🔐</span>
+                            <div class="text-left">
+                                <div class="font-bold">PRIVATE_KEY</div>
+                                <div class="text-xs opacity-80">⚠️ Use with caution</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Bunker (moved below private key) -->
+                    <button onclick="selectAuthMethod('bunker')"
                             class="w-full p-3 cyber-button bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase opacity-70">
                         <div class="flex items-center justify-center space-x-3">
                             <span class="text-xl">🏰</span>
@@ -74,8 +74,9 @@
                         </div>
                     </button>
 
-                    <!-- Read Only -->
-                    <button onclick="selectAuthMethod('readonly')" 
+                    <!-- Read Only (Hidden for now) -->
+                    <!--
+                    <button onclick="selectAuthMethod('readonly')"
                             class="w-full p-3 cyber-button bg-transparent border-2 border-gray-500 text-gray-300 hover:bg-gray-500 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
                         <div class="flex items-center justify-center space-x-3">
                             <span class="text-xl">👁️</span>
@@ -85,18 +86,7 @@
                             </div>
                         </div>
                     </button>
-
-                    <!-- Private Key -->
-                    <button onclick="selectAuthMethod('privatekey')" 
-                            class="w-full p-3 cyber-button bg-transparent border-2 border-red-400 text-red-400 hover:bg-red-400 hover:text-black rounded-md transition-all duration-300 font-mono uppercase">
-                        <div class="flex items-center justify-center space-x-3">
-                            <span class="text-xl">🔐</span>
-                            <div class="text-left">
-                                <div class="font-bold">PRIVATE_KEY</div>
-                                <div class="text-xs opacity-80">⚠️ Use with caution</div>
-                            </div>
-                        </div>
-                    </button>
+                    -->
                 </div>
             </div>
 
@@ -204,8 +194,18 @@
                     
                     <input type="password" id="private-key" placeholder="nsec... or hex private key"
                            class="w-full bg-black border-2 border-red-400 rounded-md px-3 py-2 text-red-400 placeholder-gray-600 mb-4 focus:outline-none focus:border-cyan-400 font-mono">
-                    
-                    <button onclick="connectPrivateKey()" 
+
+                    <input type="password" id="private-key-password" placeholder="Password to encrypt your private key"
+                           class="w-full bg-black border-2 border-yellow-400 rounded-md px-3 py-2 text-yellow-400 placeholder-gray-600 mb-4 focus:outline-none focus:border-cyan-400 font-mono">
+
+                    <div class="bg-black border-2 border-yellow-400 rounded-md p-2 mb-4">
+                        <p class="text-yellow-300 text-xs font-mono">
+                            🔒 <strong>ENCRYPTION:</strong> Your private key will be encrypted with this password
+                            and stored securely in your browser for signing events.
+                        </p>
+                    </div>
+
+                    <button onclick="connectPrivateKey()"
                             class="w-full cyber-button bg-transparent border-2 border-red-400 text-red-400 hover:bg-red-400 hover:text-black font-mono py-3 px-4 rounded-md transition-all duration-300 mb-3 uppercase">
                         Connect_with_Private_Key
                     </button>

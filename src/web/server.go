@@ -90,6 +90,7 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/auth/session", s.corsWrapper(s.authAPI.HandleSession))
 	mux.HandleFunc("/api/auth/generate-keys", s.corsWrapper(s.authAPI.HandleGenerateKeys))
 	mux.HandleFunc("/api/auth/connect-relay", s.corsWrapper(s.authAPI.HandleConnectRelay))
+	mux.HandleFunc("/api/auth/amber-callback", s.corsWrapper(s.authAPI.HandleAmberCallback))
 
 
 	// Web pages with HTMX routing (with CORS)

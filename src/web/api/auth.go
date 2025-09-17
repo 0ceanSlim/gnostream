@@ -11,6 +11,8 @@ import (
 	"github.com/0ceanslim/grain/client/session"
 	"github.com/0ceanslim/grain/client/connection"
 	nostr "github.com/0ceanslim/grain/server/types"
+	"regexp"
+	"strings"
 
 	"gnostream/src/config"
 )
@@ -108,10 +110,26 @@ func (api *AuthAPI) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	default:
 		// For other methods, we might need private key
 		if req.PrivateKey != "" {
-			// Decode nsec to get public key
-			privateKeyHex, err := tools.DecodeNsec(req.PrivateKey)
-			if err != nil {
-				api.sendErrorResponse(w, fmt.Sprintf("Invalid nsec format: %v", err), http.StatusBadRequest)
+			var privateKeyHex string
+			var err error
+
+			// Handle both nsec and hex format
+			if strings.HasPrefix(req.PrivateKey, "nsec") {
+				// Decode nsec to get hex private key
+				privateKeyHex, err = tools.DecodeNsec(req.PrivateKey)
+				if err != nil {
+					api.sendErrorResponse(w, fmt.Sprintf("Invalid nsec format: %v", err), http.StatusBadRequest)
+					return
+				}
+			} else if len(req.PrivateKey) == 64 {
+				// Assume it's already hex format
+				if matched, _ := regexp.MatchString("^[0-9a-fA-F]{64}$", req.PrivateKey); !matched {
+					api.sendErrorResponse(w, "Invalid hex private key format", http.StatusBadRequest)
+					return
+				}
+				privateKeyHex = req.PrivateKey
+			} else {
+				api.sendErrorResponse(w, "Private key must be nsec format or 64-character hex", http.StatusBadRequest)
 				return
 			}
 
@@ -286,6 +304,194 @@ func (api *AuthAPI) HandleConnectRelay(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("🌐 Connected to relay: %s", req.RelayURL)
 	api.sendJSONResponse(w, response, http.StatusOK)
+}
+
+// HandleAmberCallback processes callbacks from Amber app
+func (api *AuthAPI) HandleAmberCallback(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🔍 Amber callback received: method=%s, url=%s", r.Method, r.URL.String())
+
+	// Parse query parameters
+	eventParam := r.URL.Query().Get("event")
+	if eventParam == "" {
+		log.Printf("❌ Amber callback missing event parameter")
+		api.renderAmberError(w, "Missing event data from Amber")
+		return
+	}
+
+	// Extract public key from event parameter
+	publicKey, err := api.extractPublicKeyFromAmber(eventParam)
+	if err != nil {
+		log.Printf("❌ Failed to extract public key from amber response: %v", err)
+		api.renderAmberError(w, "Invalid response from Amber: "+err.Error())
+		return
+	}
+
+	log.Printf("✅ Amber callback processed successfully: %s...", publicKey[:16])
+
+	// Create session
+	sessionRequest := session.SessionInitRequest{
+		PublicKey:     publicKey,
+		RequestedMode: session.WriteMode,
+		SigningMethod: session.AmberSigning,
+	}
+
+	_, err = session.CreateUserSession(w, sessionRequest)
+	if err != nil {
+		log.Printf("❌ Failed to create amber session: %v", err)
+		api.renderAmberError(w, "Failed to create session")
+		return
+	}
+
+	log.Printf("✅ Amber session created successfully: %s...", publicKey[:16])
+
+	// Render success page with auto-redirect
+	api.renderAmberSuccess(w, publicKey)
+}
+
+// extractPublicKeyFromAmber extracts and validates public key from Amber response
+func (api *AuthAPI) extractPublicKeyFromAmber(eventParam string) (string, error) {
+	// Handle compressed response (starts with "Signer1")
+	if strings.HasPrefix(eventParam, "Signer1") {
+		return "", fmt.Errorf("compressed Amber responses not supported")
+	}
+
+	// For get_public_key, event parameter should contain the public key directly
+	publicKey := strings.TrimSpace(eventParam)
+
+	// Validate public key format (64 hex characters)
+	pubKeyRegex := regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+	if !pubKeyRegex.MatchString(publicKey) {
+		return "", fmt.Errorf("invalid public key format from Amber")
+	}
+
+	return publicKey, nil
+}
+
+// renderAmberSuccess renders the success page for Amber callback
+func (api *AuthAPI) renderAmberSuccess(w http.ResponseWriter, publicKey string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amber Login Success</title>
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #001100;
+            color: #00ff41;
+            text-align: center;
+        }
+        .success { color: #00ff41; margin: 20px 0; }
+        .loading { color: #888; }
+    </style>
+</head>
+<body>
+    <div class="success">
+        <h2>✅ Amber Login Successful!</h2>
+        <p>Connected successfully. Returning to gnostream...</p>
+    </div>
+    <div class="loading">
+        <p>Please wait...</p>
+    </div>
+
+    <script>
+        const amberResult = {
+            success: true,
+            publicKey: '` + publicKey + `',
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem('amber_callback_result', JSON.stringify(amberResult));
+            console.log('Stored Amber success result in localStorage');
+        } catch (error) {
+            console.error('Failed to store Amber result:', error);
+        }
+
+        if (window.opener && !window.opener.closed) {
+            try {
+                window.opener.postMessage({
+                    type: 'amber_success',
+                    publicKey: '` + publicKey + `'
+                }, window.location.origin);
+                console.log('Sent success message to opener window');
+            } catch (error) {
+                console.error('Failed to send message to opener:', error);
+            }
+        }
+
+        setTimeout(() => {
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.close();
+                } else {
+                    window.location.href = '/?amber_login=success';
+                }
+            } catch (error) {
+                console.error('Failed to navigate:', error);
+                window.location.href = '/';
+            }
+        }, 1500);
+    </script>
+</body>
+</html>`
+
+	w.Write([]byte(html))
+}
+
+// renderAmberError renders the error page for Amber callback
+func (api *AuthAPI) renderAmberError(w http.ResponseWriter, errorMsg string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusBadRequest)
+
+	html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amber Login Error</title>
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #001100;
+            color: #ff4444;
+            text-align: center;
+        }
+        .error { color: #ff4444; margin: 20px 0; }
+        .retry { margin-top: 20px; }
+        .retry a { color: #00ff41; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="error">
+        <h2>❌ Amber Login Failed</h2>
+        <p>` + errorMsg + `</p>
+    </div>
+    <div class="retry">
+        <a href="/">← Return to login</a>
+    </div>
+
+    <script>
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'amber_error',
+                error: '` + errorMsg + `'
+            }, window.location.origin);
+            setTimeout(() => window.close(), 3000);
+        }
+    </script>
+</body>
+</html>`
+
+	w.Write([]byte(html))
 }
 
 // Helper methods

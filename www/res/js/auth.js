@@ -8,6 +8,8 @@ let currentAuthMethod = null;
 let isAuthenticated = false;
 let currentSession = null;
 let userProfile = null;
+let encryptedPrivateKey = null;
+let privateKeyPassword = null;
 
 // Expose userProfile globally for mobile dropdown access
 window.userProfile = userProfile;
@@ -43,7 +45,7 @@ function resetModal() {
     if (selection) selection.classList.remove('hidden');
 
     // Clear all inputs
-    const inputs = ['bunker-url', 'readonly-pubkey', 'private-key'];
+    const inputs = ['bunker-url', 'readonly-pubkey', 'private-key', 'private-key-password'];
     inputs.forEach(inputId => {
         const input = document.getElementById(inputId);
         if (input) input.value = '';
@@ -201,35 +203,209 @@ async function connectExtension() {
     }
 }
 
+let amberCallbackReceived = false;
+
 async function connectAmber() {
     showStatus('Connecting to Amber...', 'loading');
-    
+
     try {
         const isAndroid = /Android/i.test(navigator.userAgent);
-        
+
         if (!isAndroid) {
             throw new Error('Amber is only available on Android devices');
         }
 
-        // In a real implementation, this would handle Amber-specific connection
-        // For now, we'll simulate the process
         showStatus('Opening Amber app...', 'loading');
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        showStatus('Connected via Amber!', 'success');
-        
+
+        // Set up callback listener BEFORE opening Amber
+        setupAmberCallbackListener();
+
+        // Generate proper callback URL for gnostream
+        const callbackUrl = `${window.location.origin}/api/auth/amber-callback?event=`;
+
+        // Use proper NIP-55 nostrsigner URL format
+        const amberUrl = `nostrsigner:?compressionType=none&returnType=signature&type=get_public_key&callbackUrl=${encodeURIComponent(callbackUrl)}&appName=${encodeURIComponent("gnostream")}`;
+
+        console.log('🔍 Opening Amber with URL:', amberUrl);
+
+        // Try multiple approaches for opening the nostrsigner protocol
+        let protocolOpened = false;
+
+        // Method 1: Create anchor element and click it (most reliable on mobile)
+        try {
+            const anchor = document.createElement("a");
+            anchor.href = amberUrl;
+            anchor.target = "_blank";
+            anchor.style.display = "none";
+            document.body.appendChild(anchor);
+
+            anchor.click();
+            protocolOpened = true;
+
+            setTimeout(() => {
+                if (document.body.contains(anchor)) {
+                    document.body.removeChild(anchor);
+                }
+            }, 100);
+
+            console.log('🔍 Amber protocol opened via anchor click');
+        } catch (anchorError) {
+            console.warn('⚠️ Anchor method failed:', anchorError);
+        }
+
+        // Method 2: Fallback to window.location.href if anchor didn't work
+        if (!protocolOpened) {
+            try {
+                window.location.href = amberUrl;
+                protocolOpened = true;
+                console.log('🔍 Amber protocol opened via window.location.href');
+            } catch (locationError) {
+                console.warn('⚠️ Window location method failed:', locationError);
+            }
+        }
+
+        if (!protocolOpened) {
+            throw new Error('Unable to open Amber protocol - make sure Amber is installed');
+        }
+
+        showStatus('Opening Amber app... If nothing happens, make sure Amber is installed and try again.', 'loading');
+
+        // Set timeout in case user doesn't complete the flow
         setTimeout(() => {
-            hideAuthModal();
-            updateLoginButton();
-        }, 1500);
-        
-        console.log('🔑 Connected with Amber');
+            if (!amberCallbackReceived) {
+                showStatus('Amber connection timed out. Make sure Amber is installed and try again.', 'error');
+            }
+        }, 60000); // 60 seconds timeout
 
     } catch (error) {
-        console.error('Amber login failed:', error);
+        console.error('❌ Amber connection failed:', error);
         showStatus(error.message, 'error');
     }
+}
+
+// Set up proper callback listener using window focus and URL checking
+function setupAmberCallbackListener() {
+    const handleVisibilityChange = () => {
+        if (!document.hidden && !amberCallbackReceived) {
+            setTimeout(checkForAmberCallback, 500);
+        }
+    };
+
+    const handleFocus = () => {
+        if (!amberCallbackReceived) {
+            setTimeout(checkForAmberCallback, 500);
+        }
+    };
+
+    // Add multiple listeners to catch the return
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    // Also check immediately
+    setTimeout(checkForAmberCallback, 1000);
+
+    // Clean up listeners after timeout
+    setTimeout(() => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("focus", handleFocus);
+    }, 65000);
+}
+
+// Check if we're on the callback URL or if callback data is available
+function checkForAmberCallback() {
+    const currentUrl = new URL(window.location.href);
+
+    // Check if this is the amber-callback page
+    if (currentUrl.pathname === "/api/auth/amber-callback") {
+        handleAmberCallback(currentUrl);
+        return;
+    }
+
+    // Check if we have the event parameter in current URL
+    if (currentUrl.searchParams.has("event")) {
+        handleAmberCallback(currentUrl);
+        return;
+    }
+
+    // Check if URL has amber_login=success parameter
+    if (currentUrl.searchParams.get("amber_login") === "success") {
+        handleAmberSuccess();
+        return;
+    }
+
+    // Check if data was stored in localStorage by the callback page
+    const amberResult = localStorage.getItem("amber_callback_result");
+    if (amberResult) {
+        try {
+            const data = JSON.parse(amberResult);
+            localStorage.removeItem("amber_callback_result");
+            handleAmberCallbackData(data);
+        } catch (error) {
+            console.error('❌ Failed to parse stored Amber result:', error);
+        }
+    }
+}
+
+// Handle callback from Amber with public key
+function handleAmberCallback(url) {
+    try {
+        amberCallbackReceived = true;
+        const eventParam = url.searchParams.get("event");
+
+        if (!eventParam) {
+            throw new Error("No event data received from Amber");
+        }
+
+        console.log('✅ Received Amber callback:', eventParam);
+        handleAmberCallbackData({ event: eventParam });
+    } catch (error) {
+        console.error('❌ Error handling Amber callback:', error);
+        showStatus(`Amber callback error: ${error.message}`, 'error');
+    }
+}
+
+// Process the actual callback data
+function handleAmberCallbackData(data) {
+    try {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        amberCallbackReceived = true;
+        console.log('✅ Amber login completed successfully');
+
+        showStatus('Connected via Amber!', 'success');
+
+        // Fetch profile and update UI
+        setTimeout(async () => {
+            await checkExistingSession(); // This will refresh session and profile
+            hideAuthModal();
+            updateLoginButton();
+        }, 1000);
+
+    } catch (error) {
+        console.error('❌ Error processing Amber callback data:', error);
+        showStatus(`Amber login failed: ${error.message}`, 'error');
+    }
+}
+
+// Handle Amber success from URL parameter
+function handleAmberSuccess() {
+    amberCallbackReceived = true;
+    console.log('✅ Amber login success detected from URL');
+
+    showStatus('Connected via Amber!', 'success');
+
+    setTimeout(async () => {
+        await checkExistingSession();
+        hideAuthModal();
+        updateLoginButton();
+
+        // Clean up URL parameter
+        const url = new URL(window.location);
+        url.searchParams.delete('amber_login');
+        window.history.replaceState({}, document.title, url.toString());
+    }, 1000);
 }
 
 async function connectBunker() {
@@ -319,53 +495,91 @@ async function connectReadOnly() {
 
 async function connectPrivateKey() {
     const privateKey = document.getElementById('private-key')?.value.trim();
-    
+    const password = document.getElementById('private-key-password')?.value.trim();
+
     if (!privateKey) {
         showStatus('Please enter your private key', 'error');
         return;
     }
-    
+
+    if (!password) {
+        showStatus('Please enter a password to encrypt your private key', 'error');
+        return;
+    }
+
+    if (password.length < 8) {
+        showStatus('Password must be at least 8 characters long', 'error');
+        return;
+    }
+
     showStatus('Validating private key...', 'loading');
-    
+
     try {
         // Basic validation - should be nsec or 64 char hex
         if (!privateKey.startsWith('nsec') && !/^[0-9a-fA-F]{64}$/.test(privateKey)) {
             throw new Error('Invalid private key format');
         }
 
+        // The backend expects nsec format or hex, and will derive the public key
+        // No need to validate specific format here, let backend handle it
+
+        showStatus('Encrypting private key...', 'loading');
+
+        // Encrypt the private key with the password
+        const encrypted = await encryptPrivateKey(privateKey, password);
+
+        // Store encrypted key
+        if (!storeEncryptedPrivateKey(encrypted)) {
+            throw new Error('Failed to store encrypted private key');
+        }
+
+        // Set global variables for later use
+        encryptedPrivateKey = encrypted;
+        privateKeyPassword = password;
+
+        showStatus('Authenticating...', 'loading');
+
+        // Send login request with just the public key (derived from private key on backend)
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                private_key: privateKey,
+                private_key: privateKey, // Backend will derive public key and create session
                 signing_method: 'private_key',
                 mode: 'write'
             })
         });
 
         const result = await response.json();
-        
+
         if (result.success) {
             currentSession = result.session;
             isAuthenticated = true;
             showStatus('Connected with private key!', 'success');
-            
-            // Clear the private key input immediately
+
+            // Clear the inputs immediately for security
             document.getElementById('private-key').value = '';
-            
-            setTimeout(() => {
+            document.getElementById('private-key-password').value = '';
+
+            // Fetch profile after successful login
+            setTimeout(async () => {
+                await fetchUserProfile();
                 hideAuthModal();
                 updateLoginButton();
             }, 1500);
-            
-            console.log('🔑 Logged in with private key');
+
+            console.log('🔑 Logged in with private key, encrypted and stored securely');
         } else {
+            // Clear stored data on login failure
+            clearStoredPrivateKey();
             throw new Error(result.error || 'Private key login failed');
         }
 
     } catch (error) {
-        console.error('Private key login failed:', error);
+        console.error('❌ Private key login failed:', error);
         showStatus(error.message, 'error');
+        // Clear sensitive data on error
+        clearStoredPrivateKey();
     }
 }
 
@@ -457,6 +671,10 @@ async function logout() {
             userProfile = null;
             window.userProfile = null; // Update global reference
             isAuthenticated = false;
+
+            // Clear stored private key on logout
+            clearStoredPrivateKey();
+
             updateLoginButton();
             console.log('🔑 Logged out successfully');
         }
@@ -482,6 +700,175 @@ async function fetchUserProfile() {
         console.error('Failed to fetch user profile:', error);
     }
     return null;
+}
+
+// Private key encryption/decryption functions
+async function encryptPrivateKey(privateKey, password) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+    );
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt']
+    );
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encoder.encode(privateKey)
+    );
+
+    // Combine salt, iv, and encrypted data
+    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+    combined.set(salt);
+    combined.set(iv, salt.length);
+    combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+    return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptPrivateKey(encryptedData, password) {
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    // Decode from base64
+    const combined = new Uint8Array(atob(encryptedData).split('').map(c => c.charCodeAt(0)));
+
+    // Extract salt, iv, and encrypted data
+    const salt = combined.slice(0, 16);
+    const iv = combined.slice(16, 28);
+    const encrypted = combined.slice(28);
+
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+    );
+
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+    );
+
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encrypted
+    );
+
+    return decoder.decode(decrypted);
+}
+
+// Store encrypted private key in secure storage
+function storeEncryptedPrivateKey(encryptedKey) {
+    try {
+        localStorage.setItem('gnostream_encrypted_key', encryptedKey);
+        return true;
+    } catch (error) {
+        console.error('Failed to store encrypted private key:', error);
+        return false;
+    }
+}
+
+// Retrieve encrypted private key from storage
+function getStoredEncryptedPrivateKey() {
+    try {
+        return localStorage.getItem('gnostream_encrypted_key');
+    } catch (error) {
+        console.error('Failed to retrieve encrypted private key:', error);
+        return null;
+    }
+}
+
+// Clear stored private key
+function clearStoredPrivateKey() {
+    try {
+        localStorage.removeItem('gnostream_encrypted_key');
+        encryptedPrivateKey = null;
+        privateKeyPassword = null;
+        return true;
+    } catch (error) {
+        console.error('Failed to clear stored private key:', error);
+        return false;
+    }
+}
+
+// Event signing with stored private key
+async function signEventWithPrivateKey(eventObj, password = null) {
+    try {
+        // Use stored password if available, otherwise require password parameter
+        const pwd = password || privateKeyPassword;
+        if (!pwd) {
+            throw new Error('Password required to decrypt private key');
+        }
+
+        // Get stored encrypted private key
+        const storedKey = encryptedPrivateKey || getStoredEncryptedPrivateKey();
+        if (!storedKey) {
+            throw new Error('No stored private key found');
+        }
+
+        // Decrypt the private key
+        const privateKey = await decryptPrivateKey(storedKey, pwd);
+
+        // TODO: Implement actual event signing with nostr library
+        // For now, this is a placeholder that would integrate with a nostr signing library
+        console.log('🔐 Signing event with private key (placeholder)');
+        console.log('Event to sign:', eventObj);
+
+        // This would return the signed event
+        return {
+            ...eventObj,
+            sig: 'placeholder_signature_' + Date.now()
+        };
+
+    } catch (error) {
+        console.error('❌ Failed to sign event with private key:', error);
+        throw error;
+    }
+}
+
+// Check if private key signing is available
+function canSignWithPrivateKey() {
+    return !!(encryptedPrivateKey || getStoredEncryptedPrivateKey()) && !!privateKeyPassword;
+}
+
+// Prompt for password if needed for signing
+async function promptForSigningPassword() {
+    return new Promise((resolve, reject) => {
+        const password = prompt('Enter your private key password to sign this event:');
+        if (password) {
+            resolve(password);
+        } else {
+            reject(new Error('Password required for signing'));
+        }
+    });
 }
 
 // Profile dropdown functionality
@@ -685,7 +1072,10 @@ window.gnostreamAuth = {
     isAuthenticated: () => isAuthenticated,
     getSession: () => currentSession,
     canSign: () => isAuthenticated && currentSession?.mode === 'write',
-    logout: logout
+    logout: logout,
+    signEvent: signEventWithPrivateKey,
+    canSignWithPrivateKey: canSignWithPrivateKey,
+    promptForPassword: promptForSigningPassword
 };
 
 // Initialize
@@ -707,6 +1097,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Check for existing session (this will call updateLoginButton again if session exists)
     checkExistingSession();
+
+    // Check for Amber callback on page load
+    setTimeout(checkForAmberCallback, 500);
 
     // Debug extension availability
     console.log('🔑 Gnostream auth system initialized');
