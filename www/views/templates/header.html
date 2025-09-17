@@ -56,7 +56,123 @@
     // Initialize mobile navigation - prevent duplicate setup
     if (!window.mobileNavInitialized) {
         window.mobileNavInitialized = true;
-        
+
+        function createMobileLoginButton() {
+            return `
+                <button id="mobile-login-btn" style="
+                    display: flex;
+                    align-items: center;
+                    padding: 12px;
+                    color: #00ff41;
+                    background: transparent;
+                    border: 1px solid #00ff41;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    transition: all 0.3s ease;
+                    width: 100%;
+                    cursor: pointer;
+                    font-family: inherit;
+                " onmouseover="this.style.background='#00ff41'; this.style.color='black';"
+                   onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
+                    <span style="color: #44ffff; margin-right: 8px;">🔑</span>
+                    LOGIN
+                </button>
+            `;
+        }
+
+        function createMobileProfileSection() {
+            const session = window.gnostreamAuth ? window.gnostreamAuth.getSession() : null;
+            const userProfile = window.userProfile; // Access global userProfile
+
+            if (!session) return createMobileLoginButton();
+
+            const displayName = userProfile && (userProfile.display_name || userProfile.name) || 'USER';
+            const profilePicture = userProfile && userProfile.picture;
+
+            return `
+                <div style="border: 1px solid #00ff41; border-radius: 4px; margin-bottom: 8px; overflow: hidden;">
+                    <div style="display: flex; align-items: center; padding: 12px; background: rgba(0, 255, 65, 0.1);">
+                        ${profilePicture ?
+                            `<img src="${profilePicture}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px; object-fit: cover;">` :
+                            `<div style="width: 32px; height: 32px; border-radius: 50%; background: #666; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="color: #999;">👤</span>
+                             </div>`
+                        }
+                        <div style="flex: 1;">
+                            <div style="color: #00ff41; font-weight: 500; font-size: 14px;">${displayName}</div>
+                        </div>
+                    </div>
+                    <button onclick="handleMobileSettings()" style="
+                        display: flex;
+                        align-items: center;
+                        padding: 12px;
+                        color: #00ff41;
+                        background: transparent;
+                        border: none;
+                        border-top: 1px solid #00ff41;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        width: 100%;
+                        cursor: pointer;
+                        font-family: inherit;
+                    " onmouseover="this.style.background='rgba(0, 255, 65, 0.1)';"
+                       onmouseout="this.style.background='transparent';">
+                        <span style="margin-right: 8px;">⚙️</span>
+                        SETTINGS
+                    </button>
+                    <button onclick="handleMobileLogout()" style="
+                        display: flex;
+                        align-items: center;
+                        padding: 12px;
+                        color: #ff4444;
+                        background: transparent;
+                        border: none;
+                        border-top: 1px solid #00ff41;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        width: 100%;
+                        cursor: pointer;
+                        font-family: inherit;
+                    " onmouseover="this.style.background='rgba(255, 68, 68, 0.1)';"
+                       onmouseout="this.style.background='transparent';">
+                        <span style="margin-right: 8px;">🚪</span>
+                        LOGOUT
+                    </button>
+                </div>
+            `;
+        }
+
+        function handleMobileSettings() {
+            // Close mobile dropdown
+            const dropdown = document.getElementById('mobile-dropdown');
+            if (dropdown) dropdown.remove();
+
+            // Call the same settings function
+            if (window.showSettings) {
+                window.showSettings();
+            } else {
+                console.log('🔧 Settings clicked - will implement settings page next');
+                alert('Settings page coming soon!');
+            }
+        }
+
+        function handleMobileLogout() {
+            // Close mobile dropdown
+            const dropdown = document.getElementById('mobile-dropdown');
+            if (dropdown) dropdown.remove();
+
+            // Call the auth logout function
+            if (window.gnostreamAuth && window.gnostreamAuth.logout) {
+                window.gnostreamAuth.logout();
+            } else if (window.logout) {
+                window.logout();
+            }
+        }
+
         function initMobileNav() {
             console.log('Initializing mobile navigation...');
             const mobileButton = document.getElementById('mobile-menu-button');
@@ -112,7 +228,10 @@
                         max-width: calc(100vw - 32px);
                     `;
                     
-                    // Add navigation links including login
+                    // Check if user is authenticated
+                    const isAuthenticated = window.gnostreamAuth && window.gnostreamAuth.isAuthenticated();
+
+                    // Add navigation links and auth section
                     dropdown.innerHTML = `
                         <a href="/" style="
                             display: flex;
@@ -127,7 +246,7 @@
                             text-transform: uppercase;
                             letter-spacing: 1px;
                             transition: all 0.3s ease;
-                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
+                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';"
                            onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
                             <span style="color: #ff4444; margin-right: 8px;">●</span>
                             LIVE_FEED
@@ -145,31 +264,12 @@
                             text-transform: uppercase;
                             letter-spacing: 1px;
                             transition: all 0.3s ease;
-                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
+                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';"
                            onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
                             <span style="color: #44aaff; margin-right: 8px;">▣</span>
                             DATA_VAULT
                         </a>
-                        <button id="mobile-login-btn" style="
-                            display: flex;
-                            align-items: center;
-                            padding: 12px;
-                            color: #00ff41;
-                            background: transparent;
-                            border: 1px solid #00ff41;
-                            border-radius: 4px;
-                            font-size: 14px;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                            transition: all 0.3s ease;
-                            width: 100%;
-                            cursor: pointer;
-                            font-family: inherit;
-                        " onmouseover="this.style.background='#00ff41'; this.style.color='black';" 
-                           onmouseout="this.style.background='transparent'; this.style.color='#00ff41';">
-                            <span style="color: #44ffff; margin-right: 8px;">🔑</span>
-                            LOGIN
-                        </button>
+                        ${isAuthenticated ? createMobileProfileSection() : createMobileLoginButton()}
                     `;
                     
                     // Add click handlers for navigation
@@ -181,7 +281,7 @@
                         });
                     });
                     
-                    // Add click handler for mobile login button
+                    // Add click handler for mobile login button (if present)
                     const mobileLoginBtn = dropdown.querySelector('#mobile-login-btn');
                     if (mobileLoginBtn) {
                         mobileLoginBtn.addEventListener('click', function() {

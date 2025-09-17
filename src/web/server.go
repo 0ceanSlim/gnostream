@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/0ceanslim/grain/client"
+	cfgType "github.com/0ceanslim/grain/config/types"
+
 	"gnostream/src/analytics"
 	"gnostream/src/config"
 	"gnostream/src/stream"
@@ -25,6 +28,28 @@ type Server struct {
 
 // NewServer creates a new web server instance
 func NewServer(cfg *config.Config, monitor *stream.Monitor) *Server {
+	// Initialize Grain client with configuration
+	grainCfg := &cfgType.ServerConfig{
+		Client: cfgType.ClientConfig{
+			DefaultRelays:     cfg.Nostr.Relays,
+			ConnectionTimeout: 15,
+			ReadTimeout:       45,
+			WriteTimeout:      15,
+			MaxConnections:    20,
+			RetryAttempts:     3,
+			RetryDelay:        2,
+			KeepAlive:         true,
+			UserAgent:         "gnostream/1.0",
+		},
+	}
+
+	if err := client.InitializeClient(grainCfg); err != nil {
+		log.Printf("⚠️ Failed to initialize Grain client: %v", err)
+		log.Println("🔑 Continuing without Grain client - nostr login may not work")
+	} else {
+		log.Println("🔑 Grain client initialized successfully")
+	}
+
 	server := &Server{
 		config:        cfg,
 		monitor:       monitor,

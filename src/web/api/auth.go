@@ -9,6 +9,8 @@ import (
 
 	"github.com/0ceanslim/grain/client/core/tools"
 	"github.com/0ceanslim/grain/client/session"
+	"github.com/0ceanslim/grain/client/connection"
+	nostr "github.com/0ceanslim/grain/server/types"
 
 	"gnostream/src/config"
 )
@@ -53,7 +55,20 @@ type SessionResponse struct {
 	Success     bool                `json:"success"`
 	IsActive    bool                `json:"is_active"`
 	Session     *session.UserSession `json:"session,omitempty"`
+	Profile     *UserProfile        `json:"profile,omitempty"`
 	Error       string              `json:"error,omitempty"`
+}
+
+// UserProfile represents a user's Nostr profile
+type UserProfile struct {
+	Name        string `json:"name,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	About       string `json:"about,omitempty"`
+	Picture     string `json:"picture,omitempty"`
+	Banner      string `json:"banner,omitempty"`
+	Website     string `json:"website,omitempty"`
+	Nip05       string `json:"nip05,omitempty"`
+	Lud16       string `json:"lud16,omitempty"`
 }
 
 // HandleLogin handles user login/authentication
@@ -128,6 +143,14 @@ func (api *AuthAPI) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("🔑 User logged in: %s (%s mode)", userSession.PublicKey[:16]+"...", userSession.Mode)
 
+	// Fetch user profile in background (don't block login)
+	go func() {
+		profile := api.fetchUserProfile(userSession.PublicKey)
+		if profile != nil {
+			log.Printf("🔑 Profile loaded for user: %s", profile.Name)
+		}
+	}()
+
 	response := LoginResponse{
 		Success:   true,
 		Message:   "Login successful",
@@ -148,7 +171,7 @@ func (api *AuthAPI) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	// Clear session cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
+		Name:     "grain-session",
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Now().Add(-time.Hour),
@@ -174,10 +197,19 @@ func (api *AuthAPI) HandleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Try to get session from cookie or header
-	// This is a simplified version - in production you'd implement proper session storage
-	sessionCookie, err := r.Cookie("session_token")
-	if err != nil || sessionCookie.Value == "" {
+	// Get session from grain session manager
+	if !session.IsSessionManagerInitialized() {
+		response := SessionResponse{
+			Success:  true,
+			IsActive: false,
+			Error:   "session manager not initialized",
+		}
+		api.sendJSONResponse(w, response, http.StatusOK)
+		return
+	}
+
+	userSession := session.SessionMgr.GetCurrentUser(r)
+	if userSession == nil {
 		response := SessionResponse{
 			Success:  true,
 			IsActive: false,
@@ -186,18 +218,14 @@ func (api *AuthAPI) HandleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In a real implementation, you'd validate the session token and retrieve session data
-	// For now, we'll just return a placeholder response
+	// Fetch user profile information
+	profile := api.fetchUserProfile(userSession.PublicKey)
+
 	response := SessionResponse{
 		Success:  true,
 		IsActive: true,
-		Session: &session.UserSession{
-			PublicKey:       "placeholder",
-			LastActive:      time.Now(),
-			Mode:           "read_only", 
-			SigningMethod:  "browser_extension",
-			ConnectedRelays: api.config.Nostr.Relays,
-		},
+		Session:  userSession,
+		Profile:  profile,
 	}
 
 	api.sendJSONResponse(w, response, http.StatusOK)
@@ -261,6 +289,89 @@ func (api *AuthAPI) HandleConnectRelay(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper methods
+
+// fetchUserProfile fetches user profile metadata from Nostr
+func (api *AuthAPI) fetchUserProfile(publicKey string) *UserProfile {
+	coreClient := connection.GetCoreClient()
+	if coreClient == nil {
+		log.Printf("Core client not available for profile fetch")
+		return nil
+	}
+
+	// Create filter for kind 0 (metadata) events
+	limit := 1
+	filters := []nostr.Filter{
+		{
+			Authors: []string{publicKey},
+			Kinds:   []int{0}, // Kind 0 = user metadata
+			Limit:   &limit,
+		},
+	}
+
+	// Subscribe and get the profile event
+	subscription, err := coreClient.Subscribe(filters, nil)
+	if err != nil {
+		log.Printf("Failed to subscribe for profile: %v", err)
+		return nil
+	}
+	defer subscription.Close()
+
+	// Wait for events (with timeout)
+	select {
+	case event := <-subscription.Events:
+		if event != nil {
+			return api.parseProfileFromEvent(event)
+		}
+	case <-time.After(5 * time.Second): // 5 second timeout
+		log.Printf("Profile fetch timeout for pubkey: %s", publicKey[:8])
+	}
+
+	return nil
+}
+
+// parseProfileFromEvent parses a kind 0 event into UserProfile
+func (api *AuthAPI) parseProfileFromEvent(event *nostr.Event) *UserProfile {
+	if event.Kind != 0 {
+		return nil
+	}
+
+	profile := &UserProfile{}
+
+	// Parse JSON content
+	var profileData map[string]interface{}
+	if err := json.Unmarshal([]byte(event.Content), &profileData); err != nil {
+		log.Printf("Failed to parse profile JSON: %v", err)
+		return nil
+	}
+
+	// Extract common profile fields
+	if name, ok := profileData["name"].(string); ok {
+		profile.Name = name
+	}
+	if displayName, ok := profileData["display_name"].(string); ok {
+		profile.DisplayName = displayName
+	}
+	if about, ok := profileData["about"].(string); ok {
+		profile.About = about
+	}
+	if picture, ok := profileData["picture"].(string); ok {
+		profile.Picture = picture
+	}
+	if banner, ok := profileData["banner"].(string); ok {
+		profile.Banner = banner
+	}
+	if website, ok := profileData["website"].(string); ok {
+		profile.Website = website
+	}
+	if nip05, ok := profileData["nip05"].(string); ok {
+		profile.Nip05 = nip05
+	}
+	if lud16, ok := profileData["lud16"].(string); ok {
+		profile.Lud16 = lud16
+	}
+
+	return profile
+}
 
 func (api *AuthAPI) validateLoginRequest(req *LoginRequest) error {
 	if req.SigningMethod == "" {

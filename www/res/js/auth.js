@@ -7,6 +7,10 @@
 let currentAuthMethod = null;
 let isAuthenticated = false;
 let currentSession = null;
+let userProfile = null;
+
+// Expose userProfile globally for mobile dropdown access
+window.userProfile = userProfile;
 
 // Modal management
 function showAuthModal() {
@@ -178,12 +182,14 @@ async function connectExtension() {
             currentSession = result.session;
             isAuthenticated = true;
             showStatus('Connected successfully!', 'success');
-            
-            setTimeout(() => {
+
+            // Fetch profile after successful login
+            setTimeout(async () => {
+                await fetchUserProfile();
                 hideAuthModal();
                 updateLoginButton();
             }, 1500);
-            
+
             console.log('🔑 Logged in with browser extension:', pubkey);
         } else {
             throw new Error(result.error || 'Login failed');
@@ -404,15 +410,36 @@ async function checkExistingSession() {
     try {
         const response = await fetch('/api/auth/session');
         const result = await response.json();
-        
+
+        console.log('🔍 Session check result:', result);
+
         if (result.success && result.is_active && result.session) {
             currentSession = result.session;
+            userProfile = result.profile; // Store profile information
+            window.userProfile = userProfile; // Update global reference
             isAuthenticated = true;
             updateLoginButton();
             console.log('🔑 Existing session found:', result.session.public_key);
+            if (userProfile) {
+                console.log('🔑 Profile loaded:', userProfile.name || userProfile.display_name || 'Unknown');
+            }
+        } else {
+            // Explicitly handle no session case
+            currentSession = null;
+            userProfile = null;
+            window.userProfile = null; // Update global reference
+            isAuthenticated = false;
+            updateLoginButton();
+            console.log('🔍 No active session found');
         }
     } catch (error) {
-        console.log('No existing session found');
+        console.log('🔍 Session check failed:', error);
+        // Ensure we're in logged out state on error
+        currentSession = null;
+        userProfile = null;
+        window.userProfile = null; // Update global reference
+        isAuthenticated = false;
+        updateLoginButton();
     }
 }
 
@@ -427,6 +454,8 @@ async function logout() {
         
         if (result.success) {
             currentSession = null;
+            userProfile = null;
+            window.userProfile = null; // Update global reference
             isAuthenticated = false;
             updateLoginButton();
             console.log('🔑 Logged out successfully');
@@ -437,35 +466,217 @@ async function logout() {
     }
 }
 
+// Fetch user profile from session endpoint
+async function fetchUserProfile() {
+    try {
+        const response = await fetch('/api/auth/session');
+        const result = await response.json();
+
+        if (result.success && result.profile) {
+            userProfile = result.profile;
+            window.userProfile = userProfile; // Update global reference
+            console.log('🔑 Profile refreshed:', userProfile.name || userProfile.display_name || 'Unknown');
+            return userProfile;
+        }
+    } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+    }
+    return null;
+}
+
+// Profile dropdown functionality
+function toggleProfileDropdown() {
+    console.log('🔍 toggleProfileDropdown called');
+
+    // Check if dropdown already exists
+    let dropdown = document.getElementById('profile-dropdown');
+
+    if (dropdown) {
+        // Remove existing dropdown
+        dropdown.remove();
+        return;
+    }
+
+    // Create dropdown element
+    dropdown = document.createElement('div');
+    dropdown.id = 'profile-dropdown';
+
+    // Get login button position for positioning
+    const loginBtn = document.getElementById('login-btn');
+    const buttonRect = loginBtn.getBoundingClientRect();
+
+    // Style the dropdown
+    dropdown.style.cssText = `
+        position: fixed;
+        top: ${buttonRect.bottom + 8}px;
+        right: ${window.innerWidth - buttonRect.right}px;
+        background: #1a1a1a;
+        border: 2px solid #00ff41;
+        border-radius: 8px;
+        padding: 8px;
+        min-width: 200px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0, 255, 65, 0.3);
+        font-family: 'Share Tech Mono', monospace;
+    `;
+
+    // Create dropdown content
+    const profileInfo = createProfileInfo();
+    const menuItems = createMenuItems();
+
+    dropdown.innerHTML = `
+        ${profileInfo}
+        <div class="border-t border-gray-600 my-2"></div>
+        ${menuItems}
+    `;
+
+    // Add to page
+    document.body.appendChild(dropdown);
+
+    // Close dropdown when clicking elsewhere
+    setTimeout(() => {
+        const closeDropdown = (event) => {
+            if (!dropdown.contains(event.target) && !loginBtn.contains(event.target)) {
+                dropdown.remove();
+                document.removeEventListener('click', closeDropdown);
+            }
+        };
+        document.addEventListener('click', closeDropdown);
+    }, 100);
+}
+
+function createProfileInfo() {
+    if (!userProfile || !currentSession) {
+        return '';
+    }
+
+    const displayName = userProfile.display_name || userProfile.name || 'Unknown User';
+    const profilePicture = userProfile.picture;
+
+    return `
+        <div class="flex items-center p-3 bg-gray-800 rounded-lg mb-2">
+            ${profilePicture ?
+                `<img src="${profilePicture}" alt="Profile" class="w-10 h-10 rounded-full mr-3 object-cover">` :
+                `<div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center mr-3">
+                    <span class="text-gray-300">👤</span>
+                 </div>`
+            }
+            <div class="flex-1">
+                <div class="text-green-400 font-medium text-sm">${displayName}</div>
+            </div>
+        </div>
+    `;
+}
+
+function createMenuItems() {
+    return `
+        <div class="space-y-1">
+            <button onclick="showSettings()" class="w-full flex items-center px-3 py-2 text-left text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors duration-200">
+                <span class="mr-3">⚙️</span>
+                <span class="text-sm font-mono uppercase">Settings</span>
+            </button>
+            <button onclick="handleDropdownLogout()" class="w-full flex items-center px-3 py-2 text-left text-red-400 hover:text-white hover:bg-red-600 rounded transition-colors duration-200">
+                <span class="mr-3">🚪</span>
+                <span class="text-sm font-mono uppercase">Logout</span>
+            </button>
+        </div>
+    `;
+}
+
+function handleDropdownLogout() {
+    // Close dropdown first
+    const dropdown = document.getElementById('profile-dropdown');
+    if (dropdown) {
+        dropdown.remove();
+    }
+
+    // Then logout
+    logout();
+}
+
+function showSettings() {
+    // Close dropdown first
+    const dropdown = document.getElementById('profile-dropdown');
+    if (dropdown) {
+        dropdown.remove();
+    }
+
+    // TODO: Implement settings page navigation
+    console.log('🔧 Settings clicked - will implement settings page next');
+    alert('Settings page coming soon!');
+}
+
 // UI updates
 function updateLoginButton() {
     const loginBtn = document.getElementById('login-btn');
     if (!loginBtn) return;
-    
+
+    console.log('🔍 updateLoginButton called:', {
+        isAuthenticated: isAuthenticated,
+        hasSession: !!currentSession,
+        hasProfile: !!userProfile
+    });
+
+
     if (isAuthenticated && currentSession) {
-        // Update button to show user status
-        const pubkeyShort = currentSession.public_key 
-            ? currentSession.public_key.slice(0, 8) + '...'
-            : 'USER';
-            
-        loginBtn.innerHTML = `
-            <span class="text-green-400 mr-2">✅</span>
-            ${pubkeyShort}
-        `;
-        
-        // Add logout on click
-        loginBtn.onclick = logout;
+        // Determine display name and picture
+        let displayName = 'USER';
+        let profilePicture = null;
+
+        if (userProfile) {
+            // Use display_name first, then name, then fallback to truncated pubkey
+            displayName = userProfile.display_name || userProfile.name ||
+                         (currentSession.public_key ? currentSession.public_key.slice(0, 8) + '...' : 'USER');
+            profilePicture = userProfile.picture;
+        } else if (currentSession.public_key) {
+            displayName = currentSession.public_key.slice(0, 8) + '...';
+        }
+
+        // Create button content with optional profile picture
+        let buttonContent = '';
+        if (profilePicture) {
+            buttonContent = `
+                <img src="${profilePicture}" alt="Profile" class="w-6 h-6 rounded-full mr-2 object-cover">
+                <span class="text-green-400">${displayName}</span>
+            `;
+        } else {
+            buttonContent = `
+                <span class="text-green-400 mr-2">✅</span>
+                <span class="text-green-400">${displayName}</span>
+            `;
+        }
+
+        loginBtn.innerHTML = buttonContent;
+        loginBtn.className = 'cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center max-lg:hidden';
+
+        // Clear any existing event listeners and add dropdown toggle
+        loginBtn.onclick = null;
+        loginBtn.removeEventListener('click', showAuthModal);
+        loginBtn.removeEventListener('click', toggleProfileDropdown);
+        loginBtn.addEventListener('click', toggleProfileDropdown);
+        console.log('🔍 Set profile dropdown handler');
     } else {
         // Reset to login button
         loginBtn.innerHTML = `
             <span class="text-cyan-400 mr-2">🔑</span>
             LOGIN
         `;
-        
-        // Add login modal on click
-        loginBtn.onclick = showAuthModal;
+        loginBtn.className = 'cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center max-lg:hidden';
+
+        // Clear any existing event listeners and add login modal
+        loginBtn.onclick = null;
+        loginBtn.removeEventListener('click', toggleProfileDropdown);
+        loginBtn.removeEventListener('click', showAuthModal);
+        loginBtn.addEventListener('click', showAuthModal);
+        console.log('🔍 Set login modal handler');
     }
 }
+
+// Test function for debugging
+window.testDropdown = function() {
+    console.log('🔍 Manual dropdown test');
+    toggleProfileDropdown();
+};
 
 // Public API
 window.gnostreamAuth = {
@@ -481,20 +692,22 @@ window.gnostreamAuth = {
 document.addEventListener('DOMContentLoaded', function() {
     // Setup modal close handlers
     document.getElementById('close-auth-modal')?.addEventListener('click', hideAuthModal);
-    
-    // Setup login button
-    document.getElementById('login-btn')?.addEventListener('click', showAuthModal);
-    
+
+    // Don't set up static login button handler - updateLoginButton() handles this dynamically
+
     // Close modal on outside click
     document.getElementById('auth-modal')?.addEventListener('click', function(e) {
         if (e.target === this) {
             hideAuthModal();
         }
     });
-    
-    // Check for existing session
+
+    // Set initial login button state (will be updated if session is found)
+    updateLoginButton();
+
+    // Check for existing session (this will call updateLoginButton again if session exists)
     checkExistingSession();
-    
+
     // Debug extension availability
     console.log('🔑 Gnostream auth system initialized');
 });

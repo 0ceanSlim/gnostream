@@ -1,10 +1,10 @@
 {{define "app-name"}}
 <div class="flex-shrink-0">
     <a href="/"
-       hx-push-url="/"
        hx-get="/"
-       hx-swap="outerHTML"
-       hx-target="body"
+       hx-push-url="/"
+       hx-target="#main-content"
+       hx-swap="innerHTML"
        class="flex items-center text-lg font-bold md:text-3xl cyber-title neon-glow-subtle">
         <span class="text-xl md:text-2xl mr-2 md:mr-3 text-cyan-400">◉</span>
         <span class="text-green-400">[STREAM_NODE]</span>
