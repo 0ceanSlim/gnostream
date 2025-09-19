@@ -42,6 +42,7 @@ type LoginResponse struct {
 	Session     *session.UserSession `json:"session,omitempty"`
 	PublicKey   string              `json:"public_key,omitempty"`
 	NPub        string              `json:"npub,omitempty"`
+	IsOwner     bool                `json:"is_owner"`
 	Error       string              `json:"error,omitempty"`
 }
 
@@ -58,6 +59,7 @@ type SessionResponse struct {
 	IsActive    bool                `json:"is_active"`
 	Session     *session.UserSession `json:"session,omitempty"`
 	Profile     *UserProfile        `json:"profile,omitempty"`
+	IsOwner     bool                `json:"is_owner"`
 	Error       string              `json:"error,omitempty"`
 }
 
@@ -159,7 +161,9 @@ func (api *AuthAPI) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate npub for response
 	npub, _ := tools.EncodePubkey(userSession.PublicKey)
 
-	log.Printf("🔑 User logged in: %s (%s mode)", userSession.PublicKey[:16]+"...", userSession.Mode)
+	// Check if user is the server owner
+	isOwner := api.isServerOwner(userSession.PublicKey)
+	log.Printf("🔑 User logged in: %s (%s mode) isOwner: %v", userSession.PublicKey[:16]+"...", userSession.Mode, isOwner)
 
 	// Fetch user profile in background (don't block login)
 	go func() {
@@ -175,6 +179,7 @@ func (api *AuthAPI) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Session:   userSession,
 		PublicKey: userSession.PublicKey,
 		NPub:      npub,
+		IsOwner:   isOwner,
 	}
 
 	api.sendJSONResponse(w, response, http.StatusOK)
@@ -239,11 +244,16 @@ func (api *AuthAPI) HandleSession(w http.ResponseWriter, r *http.Request) {
 	// Fetch user profile information
 	profile := api.fetchUserProfile(userSession.PublicKey)
 
+	// Check if user is the server owner
+	isOwner := api.isServerOwner(userSession.PublicKey)
+	log.Printf("🔍 User %s isOwner: %v", userSession.PublicKey[:16]+"...", isOwner)
+
 	response := SessionResponse{
 		Success:  true,
 		IsActive: true,
 		Session:  userSession,
 		Profile:  profile,
+		IsOwner:  isOwner,
 	}
 
 	api.sendJSONResponse(w, response, http.StatusOK)
@@ -603,4 +613,40 @@ func (api *AuthAPI) sendErrorResponse(w http.ResponseWriter, message string, sta
 		"error":   message,
 	}
 	api.sendJSONResponse(w, response, statusCode)
+}
+
+// isServerOwner checks if the given public key matches the server owner's public key
+func (api *AuthAPI) isServerOwner(publicKey string) bool {
+	// Get the server owner's private key from config
+	serverPrivateKey := api.config.Nostr.PrivateKey
+	if serverPrivateKey == "" {
+		return false
+	}
+
+	var privateKeyHex string
+	var err error
+
+	// Handle nsec format
+	if strings.HasPrefix(serverPrivateKey, "nsec") {
+		privateKeyHex, err = tools.DecodeNsec(serverPrivateKey)
+		if err != nil {
+			log.Printf("Failed to decode server nsec: %v", err)
+			return false
+		}
+	} else {
+		// Assume it's already hex format
+		privateKeyHex = serverPrivateKey
+	}
+
+	// Derive the public key from the server's private key
+	serverPublicKey, err := tools.DerivePublicKey(privateKeyHex)
+	if err != nil {
+		log.Printf("Failed to derive server public key: %v", err)
+		return false
+	}
+
+	log.Printf("🔍 Owner check: user=%s server=%s match=%v", publicKey[:16]+"...", serverPublicKey[:16]+"...", publicKey == serverPublicKey)
+
+	// Compare the public keys
+	return publicKey == serverPublicKey
 }

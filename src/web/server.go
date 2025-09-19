@@ -96,6 +96,7 @@ func (s *Server) Router() http.Handler {
 	// Web pages with HTMX routing (with CORS)
 	mux.HandleFunc("/", s.corsWrapper(s.handleLive))
 	mux.HandleFunc("/archive", s.corsWrapper(s.handleArchive))
+	mux.HandleFunc("/widgets", s.corsWrapper(s.handleWidgets))
 	
 
 	return mux
@@ -345,6 +346,42 @@ func (s *Server) handleViewerMetrics(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding viewer metrics JSON: %v", err)
 		http.Error(w, "JSON encoding error", http.StatusInternalServerError)
 		return
+	}
+}
+
+// handleWidgets serves the widgets page (server owner only)
+func (s *Server) handleWidgets(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		Title   string
+		Summary string
+		Tags    []string
+		Status  string
+		View    string
+	}{
+		Title:   "OBS Widgets",
+		Summary: "Copy widget URLs for use in OBS",
+		Tags:    []string{},
+		Status:  "widgets",
+		View:    "widgets-view",
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Check if this is an HTMX request for partial content
+	if r.Header.Get("HX-Request") == "true" {
+		// Return only the content part
+		if err := s.templates.ExecuteTemplate(w, "widgets-view", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Return full layout
+		if err := s.templates.ExecuteTemplate(w, "layout", data); err != nil {
+			log.Printf("Template error: %v", err)
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

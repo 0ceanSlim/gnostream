@@ -28,6 +28,7 @@
                 </a>
             </nav>
             
+
             <!-- Login Button (Desktop Only) -->
             <button id="login-btn" class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide flex items-center max-lg:hidden">
                 <span class="text-cyan-400 mr-2">🔑</span>
@@ -123,6 +124,27 @@
                         <span style="margin-right: 8px;">⚙️</span>
                         SETTINGS
                     </button>
+                    ${window.userSession && window.userSession.is_owner ? `
+                        <button onclick="handleMobileWidgets()" style="
+                            display: flex;
+                            align-items: center;
+                            padding: 12px;
+                            color: #00ff41;
+                            background: transparent;
+                            border: none;
+                            border-top: 1px solid #00ff41;
+                            font-size: 12px;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            width: 100%;
+                            cursor: pointer;
+                            font-family: inherit;
+                        " onmouseover="this.style.background='rgba(0, 255, 65, 0.1)';"
+                           onmouseout="this.style.background='transparent';">
+                            <span style="margin-right: 8px;">📊</span>
+                            WIDGETS
+                        </button>
+                    ` : ''}
                     <button onclick="handleMobileLogout()" style="
                         display: flex;
                         align-items: center;
@@ -158,6 +180,21 @@
                 console.log('🔧 Settings clicked - will implement settings page next');
                 alert('Settings page coming soon!');
             }
+        }
+
+        function handleMobileWidgets() {
+            // Close mobile dropdown
+            const dropdown = document.getElementById('mobile-dropdown');
+            if (dropdown) dropdown.remove();
+
+            // Use HTMX to navigate to widgets page
+            htmx.ajax('GET', '/widgets', {
+                target: '#main-content',
+                swap: 'innerHTML'
+            }).then(() => {
+                // Update URL
+                history.pushState(null, '', '/widgets');
+            });
         }
 
         function handleMobileLogout() {

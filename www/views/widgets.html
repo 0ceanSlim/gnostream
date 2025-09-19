@@ -1,0 +1,182 @@
+{{define "widgets-view"}}
+<main class="space-y-8">
+    <!-- Page Header -->
+    <div class="text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 cyber-title neon-glow-subtle glitch" data-text="OBS_WIDGETS">
+            OBS_WIDGETS
+        </h1>
+        <p class="text-cyan-400 font-mono">ACCESS_LEVEL: OWNER | WIDGET_MANAGEMENT_INTERFACE</p>
+        <div class="text-xs text-green-400 mt-2 font-mono">
+            <span class="animate-pulse">█</span> Copy URLs for OBS Browser Sources
+        </div>
+    </div>
+
+    <!-- Widgets Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Viewer Count Widget -->
+        <div class="terminal-box p-6 rounded-lg">
+            <h3 class="text-lg font-bold text-cyber-green mb-4 font-mono">
+                <span class="text-cyan-400 mr-2">◉</span>
+                VIEWER_COUNT_WIDGET
+            </h3>
+
+            <div class="space-y-4">
+                <!-- Widget Preview -->
+                <div class="border border-gray-600 rounded bg-black p-2">
+                    <iframe
+                        src="/res/widgets/viewer-count-widget.html"
+                        class="w-full h-24 border-0 bg-transparent"
+                        title="Viewer Count Widget Preview">
+                    </iframe>
+                </div>
+
+                <!-- Copy URL -->
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        value="/res/widgets/viewer-count-widget.html"
+                        readonly
+                        class="flex-1 px-3 py-2 bg-bg-terminal border border-cyber-green text-cyber-green font-mono text-sm rounded"
+                        id="viewer-count-url">
+                    <button
+                        onclick="copyToClipboard('viewer-count-url')"
+                        class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide">
+                        COPY
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Viewer Stats Widget -->
+        <div class="terminal-box p-6 rounded-lg">
+            <h3 class="text-lg font-bold text-cyber-green mb-4 font-mono">
+                <span class="text-purple-400 mr-2">▣</span>
+                VIEWER_STATS_WIDGET
+            </h3>
+
+            <div class="space-y-4">
+                <!-- Widget Preview -->
+                <div class="border border-gray-600 rounded bg-black p-2">
+                    <iframe
+                        src="/res/widgets/viewer-stats-widget.html"
+                        class="w-full h-32 border-0 bg-transparent"
+                        title="Viewer Stats Widget Preview">
+                    </iframe>
+                </div>
+
+                <!-- Copy URL -->
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        value="/res/widgets/viewer-stats-widget.html"
+                        readonly
+                        class="flex-1 px-3 py-2 bg-bg-terminal border border-cyber-green text-cyber-green font-mono text-sm rounded"
+                        id="viewer-stats-url">
+                    <button
+                        onclick="copyToClipboard('viewer-stats-url')"
+                        class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide">
+                        COPY
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Breakdown Widget -->
+        <div class="terminal-box p-6 rounded-lg">
+            <h3 class="text-lg font-bold text-cyber-green mb-4 font-mono">
+                <span class="text-yellow-400 mr-2">◈</span>
+                CATEGORY_BREAKDOWN_WIDGET
+            </h3>
+
+            <div class="space-y-4">
+                <!-- Widget Preview -->
+                <div class="border border-gray-600 rounded bg-black p-2">
+                    <iframe
+                        src="/res/widgets/category-breakdown-widget.html"
+                        class="w-full h-32 border-0 bg-transparent"
+                        title="Category Breakdown Widget Preview">
+                    </iframe>
+                </div>
+
+                <!-- Copy URL -->
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        value="/res/widgets/category-breakdown-widget.html"
+                        readonly
+                        class="flex-1 px-3 py-2 bg-bg-terminal border border-cyber-green text-cyber-green font-mono text-sm rounded"
+                        id="category-breakdown-url">
+                    <button
+                        onclick="copyToClipboard('category-breakdown-url')"
+                        class="cyber-button px-4 py-2 rounded text-sm font-mono uppercase tracking-wide">
+                        COPY
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Panel -->
+        <div class="terminal-box p-6 rounded-lg">
+            <h3 class="text-lg font-bold text-cyber-green mb-4 font-mono">
+                <span class="text-red-400 mr-2">⚡</span>
+                OBS_INTEGRATION_GUIDE
+            </h3>
+
+            <div class="space-y-3 text-sm font-mono">
+                <div class="text-cyan-400">
+                    <span class="text-green-400">1.</span> In OBS, add new <span class="text-yellow-400">Browser Source</span>
+                </div>
+                <div class="text-cyan-400">
+                    <span class="text-green-400">2.</span> Paste widget URL in <span class="text-yellow-400">URL field</span>
+                </div>
+                <div class="text-cyan-400">
+                    <span class="text-green-400">3.</span> Set Width: <span class="text-yellow-400">400px</span>, Height: <span class="text-yellow-400">200px</span>
+                </div>
+                <div class="text-cyan-400">
+                    <span class="text-green-400">4.</span> Enable <span class="text-yellow-400">Shutdown source when not visible</span>
+                </div>
+                <div class="text-cyber-pink mt-3">
+                    <span class="text-red-400">⚠</span> Widgets auto-refresh every 5 seconds
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    function copyToClipboard(inputId) {
+        const input = document.getElementById(inputId);
+        const protocol = window.location.protocol;
+        const fullUrl = protocol + '//' + input.value;
+
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            // Visual feedback
+            const button = input.nextElementSibling;
+            const originalText = button.textContent;
+            button.textContent = 'COPIED!';
+            button.style.background = 'var(--cyber-green)';
+            button.style.color = 'black';
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = 'transparent';
+                button.style.color = 'var(--cyber-green)';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy to clipboard:', err);
+            // Fallback: select the text
+            input.select();
+            input.setSelectionRange(0, 99999);
+            alert('URL selected. Press Ctrl+C to copy.');
+        });
+    }
+
+    // Auto-refresh widget previews every 30 seconds
+    setInterval(() => {
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+            iframe.src = iframe.src;
+        });
+    }, 30000);
+</script>
+{{end}}

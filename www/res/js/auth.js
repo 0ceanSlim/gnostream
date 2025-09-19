@@ -182,6 +182,7 @@ async function connectExtension() {
         
         if (result.success) {
             currentSession = result.session;
+            window.userSession = result;
             isAuthenticated = true;
             showStatus('Connected successfully!', 'success');
 
@@ -474,6 +475,7 @@ async function connectReadOnly() {
         
         if (result.success) {
             currentSession = result.session;
+            window.userSession = result;
             isAuthenticated = true;
             showStatus('Read-only mode activated!', 'success');
             
@@ -554,6 +556,7 @@ async function connectPrivateKey() {
 
         if (result.success) {
             currentSession = result.session;
+            window.userSession = result;
             isAuthenticated = true;
             showStatus('Connected with private key!', 'success');
 
@@ -631,6 +634,7 @@ async function checkExistingSession() {
             currentSession = result.session;
             userProfile = result.profile; // Store profile information
             window.userProfile = userProfile; // Update global reference
+            window.userSession = result; // Expose full session response (includes is_owner)
             isAuthenticated = true;
             updateLoginButton();
             console.log('🔑 Existing session found:', result.session.public_key);
@@ -642,6 +646,7 @@ async function checkExistingSession() {
             currentSession = null;
             userProfile = null;
             window.userProfile = null; // Update global reference
+            window.userSession = null;
             isAuthenticated = false;
             updateLoginButton();
             console.log('🔍 No active session found');
@@ -670,6 +675,7 @@ async function logout() {
             currentSession = null;
             userProfile = null;
             window.userProfile = null; // Update global reference
+            window.userSession = null;
             isAuthenticated = false;
 
             // Clear stored private key on logout
@@ -873,7 +879,6 @@ async function promptForSigningPassword() {
 
 // Profile dropdown functionality
 function toggleProfileDropdown() {
-    console.log('🔍 toggleProfileDropdown called');
 
     // Check if dropdown already exists
     let dropdown = document.getElementById('profile-dropdown');
@@ -956,8 +961,19 @@ function createProfileInfo() {
 }
 
 function createMenuItems() {
+    const isOwner = !!(window.userSession && window.userSession.is_owner);
+
+    // Show widgets button only for server owner
+    const showWidgetsButton = isOwner;
+
     return `
         <div class="space-y-1">
+            ${showWidgetsButton ? `
+                <button onclick="showWidgets()" class="w-full flex items-center px-3 py-2 text-left text-purple-300 hover:text-white hover:bg-purple-700 rounded transition-colors duration-200">
+                    <span class="mr-3">📊</span>
+                    <span class="text-sm font-mono uppercase">Widgets</span>
+                </button>
+            ` : ''}
             <button onclick="showSettings()" class="w-full flex items-center px-3 py-2 text-left text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors duration-200">
                 <span class="mr-3">⚙️</span>
                 <span class="text-sm font-mono uppercase">Settings</span>
@@ -981,6 +997,23 @@ function handleDropdownLogout() {
     logout();
 }
 
+function showWidgets() {
+    // Close dropdown first
+    const dropdown = document.getElementById('profile-dropdown');
+    if (dropdown) {
+        dropdown.remove();
+    }
+
+    // Use HTMX to navigate to widgets page
+    htmx.ajax('GET', '/widgets', {
+        target: '#main-content',
+        swap: 'innerHTML'
+    }).then(() => {
+        // Update URL
+        history.pushState(null, '', '/widgets');
+    });
+}
+
 function showSettings() {
     // Close dropdown first
     const dropdown = document.getElementById('profile-dropdown');
@@ -998,12 +1031,7 @@ function updateLoginButton() {
     const loginBtn = document.getElementById('login-btn');
     if (!loginBtn) return;
 
-    console.log('🔍 updateLoginButton called:', {
-        isAuthenticated: isAuthenticated,
-        hasSession: !!currentSession,
-        hasProfile: !!userProfile
-    });
-
+    // Update login button based on authentication state
 
     if (isAuthenticated && currentSession) {
         // Determine display name and picture
@@ -1041,7 +1069,6 @@ function updateLoginButton() {
         loginBtn.removeEventListener('click', showAuthModal);
         loginBtn.removeEventListener('click', toggleProfileDropdown);
         loginBtn.addEventListener('click', toggleProfileDropdown);
-        console.log('🔍 Set profile dropdown handler');
     } else {
         // Reset to login button
         loginBtn.innerHTML = `
@@ -1055,15 +1082,9 @@ function updateLoginButton() {
         loginBtn.removeEventListener('click', toggleProfileDropdown);
         loginBtn.removeEventListener('click', showAuthModal);
         loginBtn.addEventListener('click', showAuthModal);
-        console.log('🔍 Set login modal handler');
     }
 }
 
-// Test function for debugging
-window.testDropdown = function() {
-    console.log('🔍 Manual dropdown test');
-    toggleProfileDropdown();
-};
 
 // Public API
 window.gnostreamAuth = {
