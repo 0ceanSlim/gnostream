@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* TailwindCSS v4 Content Sources */
+@source "../../www/views/**/*.html";
+@source "../views/**/*.html";
+@source "../res/**/*.{html,js}";
+
+/* TailwindCSS v4 Configuration */
+@theme {
+  --color-cyber-green: #00ff41;
+  --color-cyber-blue: #0ff;
+  --color-cyber-pink: #ff0080;
+  --color-cyber-yellow: #ffff00;
+  --color-bg-matrix: #0d0d0d;
+  --color-bg-terminal: #001100;
+  --color-text-matrix: #00ff41;
+  --color-text-glow: #00ff4180;
+
+  --font-family-mono: "Share Tech Mono", monospace;
+  --font-family-cyber: "Orbitron", monospace;
+}
+
 /* Custom CSS variables and styles for gnostream */
 :root {
     --cyber-green: #00ff41;

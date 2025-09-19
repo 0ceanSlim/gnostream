@@ -99,13 +99,13 @@ build_css() {
         exit 1
     fi
     
-    # Build CSS - TailwindCSS v4 with auto content detection
+    # Build CSS - TailwindCSS v4 with auto content detection from project root
     echo -n "  Compiling TailwindCSS v4... "
-    if (cd www/style && tailwindcss -i input.css -o tailwind.min.css --minify); then
+    if tailwindcss --input www/style/input.css --output www/style/tailwind.min.css --minify; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗${NC}"
-        echo -e "${RED}Failed to build TailwindCSS${NC}"
+        echo -e "${RED}Failed to build TailwindCSS v4${NC}"
         exit 1
     fi
     
