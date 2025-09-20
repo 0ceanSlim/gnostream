@@ -38,6 +38,8 @@ type Client interface {
 	BroadcastCancelEvent(dtag string)
 	BroadcastDeletionEvent(eventID string, reason string)
 	BroadcastDeletionEventWithResponse(eventID string, reason string) (string, []string)
+	Subscribe(filters []nostr.Filter, relayHints []string) (*core.Subscription, error)
+	GetUserProfile(pubkey string, relayHints []string) (*nostr.Event, error)
 	IsEnabled() bool
 	GetConnectedRelays() []string
 	Close() error

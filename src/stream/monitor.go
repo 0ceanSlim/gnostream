@@ -54,14 +54,10 @@ func (m *Monitor) cleanupIncorrectLiveEvents() {
 	// Check if there are any HLS files that might indicate a false live status
 	// This is mainly for cleanup from previous runs, since stream details are now separate
 
-	// Also check if there are any HLS files that might indicate a false live status
-	metadataPath := filepath.Join(m.streamConfig.OutputDir, "metadata.json")
-	if _, err := os.Stat(metadataPath); err == nil {
-		// Remove old metadata file to prevent confusion
-		if err := os.Remove(metadataPath); err != nil {
-			log.Printf("Warning: couldn't remove old metadata file: %v", err)
-		}
-	}
+	// NOTE: We no longer delete metadata.json here as users want to access
+	// chat history from ended streams. The metadata file contains valuable
+	// information about the previous stream that should be preserved.
+	log.Printf("📝 Preserving existing stream metadata for chat history access")
 }
 
 // Start begins monitoring the RTMP stream

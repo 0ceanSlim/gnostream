@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyberpunk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat - [STREAM_NODE]</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --cyber-green: #00ff41;
+            --cyber-blue: #0ff;
+            --cyber-pink: #ff0080;
+            --cyber-yellow: #ffff00;
+            --bg-matrix: #0d0d0d;
+            --bg-terminal: #001100;
+            --text-matrix: #00ff41;
+            --text-glow: #00ff4180;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--cyber-green) transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--cyber-green);
+            border-radius: 4px;
+            box-shadow: 0 0 10px var(--cyber-green);
+        }
+
+        body {
+            background: var(--bg-matrix);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .cyber-title {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+        }
+
+        .terminal-box {
+            background: var(--bg-terminal);
+            border: 1px solid var(--cyber-green);
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .terminal-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyber-green), transparent);
+            animation: scan-line 3s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes scan-line {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .cyber-button {
+            background: transparent;
+            border: 2px solid var(--cyber-green);
+            color: var(--cyber-green);
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .cyber-button:hover:not(:disabled) {
+            color: black;
+            background: var(--cyber-green);
+            box-shadow: 0 0 20px var(--cyber-green);
+        }
+
+        .cyber-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .neon-glow {
+            text-shadow:
+                0 0 3px var(--cyber-green),
+                0 0 6px var(--cyber-green);
+        }
+
+        .chat-message {
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-input {
+            background: var(--bg-terminal);
+            border: 1px solid var(--cyber-green);
+            color: var(--text-matrix);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px var(--cyber-green);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--cyber-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .profile-pic {
+            border: 1px solid var(--cyber-green);
+            box-shadow: 0 0 5px var(--text-glow);
+        }
+
+        .username {
+            color: var(--cyber-green);
+            font-weight: bold;
+        }
+
+        .message-content {
+            color: #e0e0e0;
+            word-wrap: break-word;
+        }
+
+        .timestamp {
+            color: #888;
+            font-size: 0.75rem;
+        }
+
+        .login-prompt {
+            border: 1px solid var(--cyber-pink);
+            background: rgba(255, 0, 128, 0.1);
+            color: var(--cyber-pink);
+        }
+
+        .error-message {
+            color: #ff4444;
+            font-size: 0.875rem;
+        }
+
+        .loading-message {
+            color: var(--cyber-blue);
+            font-size: 0.875rem;
+        }
+
+        .reply-indicator {
+            border-left: 2px solid var(--cyber-blue);
+            background: rgba(0, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="text-green-400">
+    <div class="h-screen flex flex-col terminal-box">
+        <!-- Chat Header -->
+        <div class="flex items-center justify-between p-3 border-b border-green-900">
+            <div class="flex items-center space-x-2">
+                <div class="status-indicator"></div>
+                <span class="cyber-title text-sm neon-glow">LIVE CHAT</span>
+            </div>
+            <div class="text-xs opacity-75" id="message-count">0 messages</div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3" id="chat-messages">
+            <!-- Messages will be loaded here -->
+            <div class="text-center text-gray-500 text-sm" id="loading-messages">
+                <div class="loading-message">Connecting to chat...</div>
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="border-t border-green-900 p-3" id="chat-input-container">
+            <!-- Login prompt or input will be shown here -->
+            <div class="login-prompt p-3 rounded text-center text-sm" id="login-prompt">
+                <div class="mb-2">🔑 Login required to participate in chat</div>
+                <button onclick="openParentAuth()" class="cyber-button px-3 py-1 rounded text-xs">
+                    LOGIN
+                </button>
+            </div>
+
+            <div class="hidden" id="chat-input-form">
+                <div class="flex space-x-2">
+                    <input
+                        type="text"
+                        id="message-input"
+                        placeholder="Type your message..."
+                        class="flex-1 chat-input px-3 py-2 rounded"
+                        maxlength="280"
+                        autocomplete="off"
+                    >
+                    <button
+                        id="send-button"
+                        class="cyber-button px-4 py-2 rounded text-sm"
+                        disabled
+                    >
+                        SEND
+                    </button>
+                </div>
+                <div class="text-xs opacity-75 mt-1" id="char-count">0/280</div>
+                <div class="error-message mt-1 hidden" id="error-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/res/js/chat-widget.js"></script>
+</body>
+</html>

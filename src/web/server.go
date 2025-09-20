@@ -8,11 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/0ceanslim/grain/client"
-	cfgType "github.com/0ceanslim/grain/config/types"
-
 	"gnostream/src/analytics"
 	"gnostream/src/config"
+	"gnostream/src/nostr"
 	"gnostream/src/stream"
 	"gnostream/src/web/api"
 )
@@ -24,38 +22,41 @@ type Server struct {
 	templates     *template.Template
 	viewerTracker *analytics.ViewerTracker
 	authAPI       *api.AuthAPI
+	chatAPI       *api.ChatAPI
+	wsManager     *api.WebSocketManager
+	nostrClient   nostr.Client
 }
 
 // NewServer creates a new web server instance
 func NewServer(cfg *config.Config, monitor *stream.Monitor) *Server {
-	// Initialize Grain client with configuration
-	grainCfg := &cfgType.ServerConfig{
-		Client: cfgType.ClientConfig{
-			DefaultRelays:     cfg.Nostr.Relays,
-			ConnectionTimeout: 15,
-			ReadTimeout:       45,
-			WriteTimeout:      15,
-			MaxConnections:    20,
-			RetryAttempts:     3,
-			RetryDelay:        2,
-			KeepAlive:         true,
-			UserAgent:         "gnostream/1.0",
-		},
+	// Note: Grain client initialization is now handled by our NostrClient
+	// to avoid conflicts with subscription management
+
+	// Initialize Nostr client
+	nostrClient, err := nostr.NewClient(&cfg.Nostr)
+	if err != nil {
+		log.Printf("⚠️ Failed to initialize Nostr client: %v", err)
+		log.Println("💬 Chat functionality will be limited")
 	}
 
-	if err := client.InitializeClient(grainCfg); err != nil {
-		log.Printf("⚠️ Failed to initialize Grain client: %v", err)
-		log.Println("🔑 Continuing without Grain client - nostr login may not work")
-	} else {
-		log.Println("🔑 Grain client initialized successfully")
-	}
+	// Initialize WebSocket manager
+	wsManager := api.NewWebSocketManager(cfg, monitor, nostrClient)
 
 	server := &Server{
 		config:        cfg,
 		monitor:       monitor,
 		viewerTracker: analytics.NewViewerTracker(),
 		authAPI:       api.NewAuthAPI(cfg),
+		chatAPI:       api.NewChatAPI(cfg, nostrClient, monitor, wsManager),
+		wsManager:     wsManager,
+		nostrClient:   nostrClient,
 	}
+
+	// Start WebSocket manager
+	go wsManager.Run()
+
+	// Start nostr subscription immediately (don't wait for WebSocket clients)
+	go wsManager.StartInitialSubscription()
 
 	// Load templates
 	server.loadTemplates()
@@ -91,6 +92,11 @@ func (s *Server) Router() http.Handler {
 	mux.HandleFunc("/api/auth/generate-keys", s.corsWrapper(s.authAPI.HandleGenerateKeys))
 	mux.HandleFunc("/api/auth/connect-relay", s.corsWrapper(s.authAPI.HandleConnectRelay))
 	mux.HandleFunc("/api/auth/amber-callback", s.corsWrapper(s.authAPI.HandleAmberCallback))
+
+	// Chat API endpoints
+	mux.HandleFunc("/api/chat/messages", s.corsWrapper(s.chatAPI.HandleGetMessages))
+	mux.HandleFunc("/api/chat/send", s.corsWrapper(s.chatAPI.HandleSendMessage))
+	mux.HandleFunc("/api/chat/ws", s.wsManager.HandleWebSocket) // WebSocket endpoint
 
 
 	// Web pages with HTMX routing (with CORS)
